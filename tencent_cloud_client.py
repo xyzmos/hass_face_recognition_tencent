@@ -383,7 +383,7 @@ class TencentCloudClient:
         quality_control: int = 1,
         need_rotate_check: int = 1,
         face_match_threshold: float = 60.0
-    ) -> List[Dict[str, Any]]:
+    ) -> Dict[str, Any]:
         """搜索人脸"""
         _LOGGER.info(
             "开始搜索人脸: image_url=%s, image_path=%s, image_file is not None: %s, max_face_num=%d, min_face_size=%d, max_user_num=%d, quality_control=%d, need_rotate_check=%d, face_match_threshold=%.2f",
@@ -463,7 +463,13 @@ class TencentCloudClient:
                 else:
                     _LOGGER.info("未检测到人脸")
                 
-                return results
+                return {
+                    "success": True,
+                    "faces": results,
+                    "error": None,
+                    "error_code": None,
+                    "error_message": None
+                }
                 
             except Exception as ex:
                 # 计算请求耗时
@@ -472,8 +478,22 @@ class TencentCloudClient:
                 # 记录错误日志
                 self._log_error("人脸搜索", request_id, ex, duration)
                 
-                # 重新抛出异常
-                raise
+                # 不抛出异常，而是返回包含错误信息的结构化结果
+                error_code = None
+                error_message = str(ex)
+                
+                # 如果是腾讯云API异常，提取错误码和消息
+                if isinstance(ex, TencentCloudSDKException):
+                    error_code = getattr(ex, "code", None)
+                    error_message = getattr(ex, "message", str(ex))
+                
+                return {
+                    "success": False,
+                    "faces": [],
+                    "error": str(ex),
+                    "error_code": error_code,
+                    "error_message": error_message
+                }
         
         # 执行带重试的API调用
         return self._execute_with_retry(api_call, "人脸搜索")
@@ -486,7 +506,7 @@ class TencentCloudClient:
         max_face_num: int = 1,
         min_face_size: int = 34,
         need_rotate_check: int = 1
-    ) -> List[Dict[str, Any]]:
+    ) -> Dict[str, Any]:
         """检测人脸"""
         _LOGGER.info(
             "开始检测人脸: max_face_num=%d, min_face_size=%d, need_rotate_check=%d",
@@ -544,7 +564,13 @@ class TencentCloudClient:
                 else:
                     _LOGGER.info("未检测到人脸")
                 
-                return results
+                return {
+                    "success": True,
+                    "faces": results,
+                    "error": None,
+                    "error_code": None,
+                    "error_message": None
+                }
                 
             except Exception as ex:
                 # 计算请求耗时
@@ -553,8 +579,22 @@ class TencentCloudClient:
                 # 记录错误日志
                 self._log_error("人脸检测", request_id, ex, duration)
                 
-                # 重新抛出异常
-                raise
+                # 不抛出异常，而是返回包含错误信息的结构化结果
+                error_code = None
+                error_message = str(ex)
+                
+                # 如果是腾讯云API异常，提取错误码和消息
+                if isinstance(ex, TencentCloudSDKException):
+                    error_code = getattr(ex, "code", None)
+                    error_message = getattr(ex, "message", str(ex))
+                
+                return {
+                    "success": False,
+                    "faces": [],
+                    "error": str(ex),
+                    "error_code": error_code,
+                    "error_message": error_message
+                }
         
         # 执行带重试的API调用
         return self._execute_with_retry(api_call, "人脸检测")
@@ -566,7 +606,7 @@ class TencentCloudClient:
         image_file: str = None,
         max_face_num: int = 1,
         need_rotate_check: int = 1
-    ) -> List[Dict[str, Any]]:
+    ) -> Dict[str, Any]:
         """获取人脸属性"""
         _LOGGER.info(
             "开始获取人脸属性: max_face_num=%d, need_rotate_check=%d",
@@ -627,7 +667,13 @@ class TencentCloudClient:
                 else:
                     _LOGGER.info("未检测到人脸")
                 
-                return results
+                return {
+                    "success": True,
+                    "faces": results,
+                    "error": None,
+                    "error_code": None,
+                    "error_message": None
+                }
                 
             except Exception as ex:
                 # 计算请求耗时
@@ -636,8 +682,22 @@ class TencentCloudClient:
                 # 记录错误日志
                 self._log_error("获取人脸属性", request_id, ex, duration)
                 
-                # 重新抛出异常
-                raise
+                # 不抛出异常，而是返回包含错误信息的结构化结果
+                error_code = None
+                error_message = str(ex)
+                
+                # 如果是腾讯云API异常，提取错误码和消息
+                if isinstance(ex, TencentCloudSDKException):
+                    error_code = getattr(ex, "code", None)
+                    error_message = getattr(ex, "message", str(ex))
+                
+                return {
+                    "success": False,
+                    "faces": [],
+                    "error": str(ex),
+                    "error_code": error_code,
+                    "error_message": error_message
+                }
         
         # 执行带重试的API调用
         return self._execute_with_retry(api_call, "获取人脸属性")

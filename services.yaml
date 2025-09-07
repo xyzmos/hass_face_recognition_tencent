@@ -64,9 +64,12 @@ face_search:
       name: 质量控制
       description: 是否进行质量控制。
       default: true
-      example: true
+      example: 1
       selector:
-        boolean:
+        number:
+          min: 0
+          max: 1
+          mode: box
     need_rotate_check:
       name: 旋转检查
       description: 是否进行旋转检查。

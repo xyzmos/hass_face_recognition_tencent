@@ -134,7 +134,7 @@ async def async_face_search_service(call: ServiceCall) -> Dict[str, Any]:
         need_rotate_check = data.get(ATTR_NEED_ROTATE_CHECK, 1)
         face_match_threshold = data.get(ATTR_FACE_MATCH_THRESHOLD, 60.0)
 
-        results = await face_recognition.async_search_faces(
+        result = await face_recognition.async_search_faces(
             image_url=image_url,
             image_path=image_path,
             image_file=image_file,
@@ -147,11 +147,19 @@ async def async_face_search_service(call: ServiceCall) -> Dict[str, Any]:
             face_match_threshold=face_match_threshold
         )
 
-        return {"results": results}
+        # 直接返回结果，包含状态和错误信息
+        return result
 
     except Exception as ex:
         _LOGGER.error("人脸搜索服务调用失败: %s", ex)
-        raise HomeAssistantError(f"人脸搜索服务调用失败: {str(ex)}")
+        # 返回错误信息，而不是抛出异常
+        return {
+            "success": False,
+            "faces": [],
+            "error": str(ex),
+            "error_code": "service_error",
+            "error_message": str(ex)
+        }
 
 
 async def async_detect_face_service(call: ServiceCall) -> Dict[str, Any]:
@@ -184,7 +192,7 @@ async def async_detect_face_service(call: ServiceCall) -> Dict[str, Any]:
         min_face_size = data.get(ATTR_MIN_FACE_SIZE, 34)
         need_rotate_check = data.get(ATTR_NEED_ROTATE_CHECK, 1)
 
-        results = await face_recognition.async_detect_faces(
+        result = await face_recognition.async_detect_faces(
             image_url=image_url,
             image_path=image_path,
             image_file=image_file,
@@ -193,11 +201,19 @@ async def async_detect_face_service(call: ServiceCall) -> Dict[str, Any]:
             need_rotate_check=need_rotate_check
         )
 
-        return {"results": results}
+        # 直接返回结果，包含状态和错误信息
+        return result
 
     except Exception as ex:
         _LOGGER.error("人脸检测服务调用失败: %s", ex)
-        raise HomeAssistantError(f"人脸检测服务调用失败: {str(ex)}")
+        # 返回错误信息，而不是抛出异常
+        return {
+            "success": False,
+            "faces": [],
+            "error": str(ex),
+            "error_code": "service_error",
+            "error_message": str(ex)
+        }
 
 
 async def async_get_face_attributes_service(call: ServiceCall) -> Dict[str, Any]:
@@ -229,7 +245,7 @@ async def async_get_face_attributes_service(call: ServiceCall) -> Dict[str, Any]
         max_face_num = data.get(ATTR_MAX_FACE_NUM, 1)
         need_rotate_check = data.get(ATTR_NEED_ROTATE_CHECK, 1)
 
-        results = await face_recognition.async_get_face_attributes(
+        result = await face_recognition.async_get_face_attributes(
             image_url=image_url,
             image_path=image_path,
             image_file=image_file,
@@ -237,11 +253,19 @@ async def async_get_face_attributes_service(call: ServiceCall) -> Dict[str, Any]
             need_rotate_check=need_rotate_check
         )
 
-        return {"results": results}
+        # 直接返回结果，包含状态和错误信息
+        return result
 
     except Exception as ex:
         _LOGGER.error("获取人脸属性服务调用失败: %s", ex)
-        raise HomeAssistantError(f"获取人脸属性服务调用失败: {str(ex)}")
+        # 返回错误信息，而不是抛出异常
+        return {
+            "success": False,
+            "faces": [],
+            "error": str(ex),
+            "error_code": "service_error",
+            "error_message": str(ex)
+        }
 
 
 def _get_config_entry(hass: HomeAssistant):

@@ -44,14 +44,14 @@ class FaceRecognition:
         quality_control: int = 1,
         need_rotate_check: int = 1,
         face_match_threshold: float = 60.0
-    ) -> List[Dict[str, Any]]:
+    ) -> Dict[str, Any]:
         """搜索人脸"""
         try:
             # 验证参数
             self._validate_image_params(image_url, image_path, image_file)
 
             # 调用腾讯云API搜索人脸
-            results = await self.hass.async_add_executor_job(
+            result = await self.hass.async_add_executor_job(
                 self.client.search_faces,
                 image_url,
                 image_path,
@@ -66,14 +66,43 @@ class FaceRecognition:
             )
 
             # 处理结果
-            return self._process_search_results(results)
+            if result.get("success", False):
+                processed_faces = self._process_search_results(result.get("faces", []))
+                return {
+                    "success": True,
+                    "faces": processed_faces,
+                    "error": None,
+                    "error_code": None,
+                    "error_message": None
+                }
+            else:
+                # 返回错误信息
+                return {
+                    "success": False,
+                    "faces": [],
+                    "error": result.get("error"),
+                    "error_code": result.get("error_code"),
+                    "error_message": result.get("error_message")
+                }
 
         except ValueError as ex:
             _LOGGER.error("人脸搜索参数错误: %s", ex)
-            raise HomeAssistantError(str(ex))
+            return {
+                "success": False,
+                "faces": [],
+                "error": str(ex),
+                "error_code": "invalid_parameter",
+                "error_message": str(ex)
+            }
         except Exception as ex:
             _LOGGER.error("人脸搜索失败: %s", ex)
-            raise HomeAssistantError(f"人脸搜索失败: {str(ex)}")
+            return {
+                "success": False,
+                "faces": [],
+                "error": str(ex),
+                "error_code": "unknown_error",
+                "error_message": str(ex)
+            }
 
     def _validate_image_params(self, image_url: str, image_path: str, image_file: str) -> None:
         """验证图片参数"""
@@ -152,14 +181,14 @@ class FaceRecognition:
         image_file: str = None,
         max_face_num: int = 1,
         need_rotate_check: int = 1
-    ) -> List[Dict[str, Any]]:
+    ) -> Dict[str, Any]:
         """获取人脸属性"""
         try:
             # 验证参数
             self._validate_image_params(image_url, image_path, image_file)
 
             # 调用腾讯云API获取人脸属性
-            results = await self.hass.async_add_executor_job(
+            result = await self.hass.async_add_executor_job(
                 self.client.get_face_attributes,
                 image_url,
                 image_path,
@@ -168,10 +197,34 @@ class FaceRecognition:
                 need_rotate_check
             )
 
-            return results
+            # 处理结果
+            if result.get("success", False):
+                return {
+                    "success": True,
+                    "faces": result.get("faces", []),
+                    "error": None,
+                    "error_code": None,
+                    "error_message": None
+                }
+            else:
+                # 返回错误信息
+                return {
+                    "success": False,
+                    "faces": [],
+                    "error": result.get("error"),
+                    "error_code": result.get("error_code"),
+                    "error_message": result.get("error_message")
+                }
 
         except Exception as ex:
-            self._handle_api_error("获取人脸属性", ex)
+            _LOGGER.error("获取人脸属性失败: %s", ex)
+            return {
+                "success": False,
+                "faces": [],
+                "error": str(ex),
+                "error_code": "unknown_error",
+                "error_message": str(ex)
+            }
 
     # 移除 _get_face_attributes_sync 方法，因为现在直接使用客户端的 get_face_attributes 方法
 
@@ -183,14 +236,14 @@ class FaceRecognition:
         max_face_num: int = 1,
         min_face_size: int = 34,
         need_rotate_check: int = 1
-    ) -> List[Dict[str, Any]]:
+    ) -> Dict[str, Any]:
         """检测人脸"""
         try:
             # 验证参数
             self._validate_image_params(image_url, image_path, image_file)
 
             # 调用腾讯云API检测人脸
-            results = await self.hass.async_add_executor_job(
+            result = await self.hass.async_add_executor_job(
                 self.client.detect_faces,
                 image_url,
                 image_path,
@@ -200,9 +253,33 @@ class FaceRecognition:
                 need_rotate_check
             )
 
-            return results
+            # 处理结果
+            if result.get("success", False):
+                return {
+                    "success": True,
+                    "faces": result.get("faces", []),
+                    "error": None,
+                    "error_code": None,
+                    "error_message": None
+                }
+            else:
+                # 返回错误信息
+                return {
+                    "success": False,
+                    "faces": [],
+                    "error": result.get("error"),
+                    "error_code": result.get("error_code"),
+                    "error_message": result.get("error_message")
+                }
 
         except Exception as ex:
-            self._handle_api_error("人脸检测", ex)
+            _LOGGER.error("人脸检测失败: %s", ex)
+            return {
+                "success": False,
+                "faces": [],
+                "error": str(ex),
+                "error_code": "unknown_error",
+                "error_message": str(ex)
+            }
 
     # 移除 _detect_faces_sync 方法，因为现在直接使用客户端的 detect_faces 方法
