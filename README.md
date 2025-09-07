@@ -14,6 +14,12 @@
 4. 搜索"腾讯云人脸识别"并点击
 5. 输入您的腾讯云凭据和配置信息
 
+## 腾讯云相关页面入口
+
+- [腾讯云人脸识别](https://curl.qcloud.com/oqiFPa7h)
+- [人脸管理控制台](https://curl.qcloud.com/RMATbuiO)
+- [获取API密钥](https://curl.qcloud.com/cT0HlJRW)
+
 ## 配置
 
 ### 必需配置
