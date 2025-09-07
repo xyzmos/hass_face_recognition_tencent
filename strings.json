@@ -1,0 +1,144 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "腾讯云人脸识别",
+        "description": "请输入您的腾讯云人脸识别服务凭据",
+        "data": {
+          "secret_id": "Secret ID",
+          "secret_key": "Secret Key",
+          "region": "区域",
+          "person_group_id": "人员组ID",
+          "name": "名称"
+        },
+        "data_description": {
+          "secret_id": "腾讯云API的Secret ID",
+          "secret_key": "腾讯云API的Secret Key",
+          "region": "腾讯云服务区域，例如：ap-shanghai",
+          "person_group_id": "人脸库人员组ID，用于存储和搜索人脸",
+          "name": "集成名称"
+        }
+      }
+    },
+    "error": {
+      "invalid_config": "无效的配置"
+    },
+    "abort": {
+      "already_configured": "已经配置了腾讯云人脸识别服务"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "腾讯云人脸识别选项",
+        "description": "配置腾讯云人脸识别服务选项",
+        "data": {
+          "region": "区域"
+        },
+        "data_description": {
+          "region": "腾讯云服务区域，例如：ap-shanghai"
+        }
+      }
+    }
+  },
+  "services": {
+    "face_search": {
+      "name": "人脸搜索",
+      "description": "搜索人脸",
+      "fields": {
+        "image_url": {
+          "name": "图片URL",
+          "description": "要搜索的图片URL"
+        },
+        "image_path": {
+          "name": "图片路径",
+          "description": "要搜索的本地图片路径"
+        },
+        "image_file": {
+          "name": "图片文件",
+          "description": "要搜索的图片文件（Base64编码）"
+        },
+        "max_face_num": {
+          "name": "最大人脸数量",
+          "description": "最多处理的人脸数量"
+        },
+        "min_face_size": {
+          "name": "最小人脸尺寸",
+          "description": "最小人脸尺寸（像素）"
+        },
+        "max_user_num": {
+          "name": "最大返回人员数量",
+          "description": "最多返回的匹配人员数量"
+        },
+        "quality_control": {
+          "name": "质量控制",
+          "description": "是否进行质量控制"
+        },
+        "need_rotate_check": {
+          "name": "旋转检查",
+          "description": "是否进行旋转检查"
+        },
+        "face_match_threshold": {
+          "name": "人脸匹配阈值",
+          "description": "人脸匹配阈值（0-100）"
+        }
+      }
+    },
+    "detect_face": {
+      "name": "人脸检测",
+      "description": "检测图片中的人脸",
+      "fields": {
+        "image_url": {
+          "name": "图片URL",
+          "description": "要检测的图片URL"
+        },
+        "image_path": {
+          "name": "图片路径",
+          "description": "要检测的本地图片路径"
+        },
+        "image_file": {
+          "name": "图片文件",
+          "description": "要检测的图片文件（Base64编码）"
+        },
+        "max_face_num": {
+          "name": "最大人脸数量",
+          "description": "最多检测的人脸数量"
+        },
+        "min_face_size": {
+          "name": "最小人脸尺寸",
+          "description": "最小人脸尺寸（像素）"
+        },
+        "need_rotate_check": {
+          "name": "旋转检查",
+          "description": "是否进行旋转检查"
+        }
+      }
+    },
+    "get_face_attributes": {
+      "name": "获取人脸属性",
+      "description": "获取图片中人脸的属性信息",
+      "fields": {
+        "image_url": {
+          "name": "图片URL",
+          "description": "要分析的图片URL"
+        },
+        "image_path": {
+          "name": "图片路径",
+          "description": "要分析的本地图片路径"
+        },
+        "image_file": {
+          "name": "图片文件",
+          "description": "要分析的图片文件（Base64编码）"
+        },
+        "max_face_num": {
+          "name": "最大人脸数量",
+          "description": "最多分析的人脸数量"
+        },
+        "need_rotate_check": {
+          "name": "旋转检查",
+          "description": "是否进行旋转检查"
+        }
+      }
+    }
+  }
+}

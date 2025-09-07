@@ -1,0 +1,55 @@
+"""腾讯云人脸识别插件常量定义"""
+
+DOMAIN = "tencent_face_recognition"
+PLATFORMS = []
+
+# 配置项键
+CONF_SECRET_ID = "secret_id"
+CONF_SECRET_KEY = "secret_key"
+CONF_REGION = "region"
+CONF_PERSON_GROUP_ID = "person_group_id"
+
+# 默认值
+DEFAULT_REGION = "ap-shanghai"
+DEFAULT_PERSON_GROUP_ID = "Hass"
+DEFAULT_MAX_FACE_NUM = 1
+DEFAULT_MIN_FACE_SIZE = 34
+DEFAULT_MAX_USER_NUM = 5
+DEFAULT_QUALITY_CONTROL = 1
+DEFAULT_NEED_ROTATE_CHECK = 1
+DEFAULT_FACE_MATCH_THRESHOLD = 60.0
+
+# 服务
+SERVICE_FACE_SEARCH = "face_search"
+SERVICE_DETECT_FACE = "detect_face"
+SERVICE_GET_FACE_ATTRIBUTES = "get_face_attributes"
+
+# 服务参数
+ATTR_IMAGE_URL = "image_url"
+ATTR_IMAGE_PATH = "image_path"
+ATTR_IMAGE_FILE = "image_file"
+ATTR_MAX_FACE_NUM = "max_face_num"
+ATTR_MIN_FACE_SIZE = "min_face_size"
+ATTR_MAX_USER_NUM = "max_user_num"
+ATTR_QUALITY_CONTROL = "quality_control"
+ATTR_NEED_ROTATE_CHECK = "need_rotate_check"
+ATTR_FACE_MATCH_THRESHOLD = "face_match_threshold"
+
+# 错误消息
+ERROR_INVALID_CONFIG = "无效的配置"
+ERROR_API_ERROR = "API调用错误"
+ERROR_IMAGE_NOT_FOUND = "图片未找到"
+ERROR_FACE_NOT_DETECTED = "未检测到人脸"
+
+# 状态
+STATE_CONNECTED = "已连接"
+STATE_DISCONNECTED = "未连接"
+STATE_CONNECTING = "连接中"
+STATE_ERROR = "连接错误"
+STATE_PARTIALLY_CONNECTED = "部分连接"
+
+# 日志级别
+LOG_LEVEL_DEBUG = "DEBUG"
+LOG_LEVEL_INFO = "INFO"
+LOG_LEVEL_WARNING = "WARNING"
+LOG_LEVEL_ERROR = "ERROR"

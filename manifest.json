@@ -1,0 +1,16 @@
+{
+  "domain": "tencent_face_recognition",
+  "name": "腾讯云人脸识别",
+  "config_flow": true,
+  "documentation": "https://code.nextrt.com/Hass/tencent_face_recognition",
+  "issue_tracker": "https://code.nextrt.com/Hass/tencent_face_recognition/issues",
+  "requirements": [
+    "tencentcloud-sdk-python-common",
+    "tencentcloud-sdk-python-iai"
+  ],
+  "dependencies": [],
+  "codeowners": ["@xyzmos"],
+  "version": "1.0.0",
+  "iot_class": "cloud_polling",
+  "resources": []
+}
