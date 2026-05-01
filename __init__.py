@@ -67,7 +67,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unload_ok:
         await async_unload_services(hass)
 
-        hass.data[DOMAIN].pop(entry.entry_id)
+        entry_data = hass.data[DOMAIN].pop(entry.entry_id, None)
+        if entry_data and "client" in entry_data:
+            client = entry_data["client"]
+            await hass.async_add_executor_job(client.close)
 
     return unload_ok
 

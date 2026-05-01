@@ -10,6 +10,7 @@ import re
 import requests
 import time
 import uuid
+from functools import lru_cache
 from typing import Dict, Any, List, Optional, Union, Callable
 
 from tencentcloud.common import credential
@@ -115,6 +116,14 @@ class TencentCloudClient:
         self.region = region
         self.retry_config = retry_config or RetryConfig()
         self.client = self._create_client()
+        self._session = requests.Session()
+        self._session.mount('http://', requests.adapters.HTTPAdapter(max_retries=2))
+        self._session.mount('https://', requests.adapters.HTTPAdapter(max_retries=2))
+
+    def close(self) -> None:
+        """释放资源"""
+        if self._session:
+            self._session.close()
 
     def _create_client(self) -> iai_client.IaiClient:
         """创建腾讯云人脸识别客户端"""
@@ -161,6 +170,14 @@ class TencentCloudClient:
             error_msg = error_msg.replace(self.secret_key, "***")
         return error_msg
 
+    @lru_cache(maxsize=32)
+    def _cached_download_image_as_base64(self, image_url: str) -> str:
+        return self._download_image_as_base64_uncached(image_url)
+
+    @lru_cache(maxsize=32)
+    def _cached_read_local_image_as_base64(self, image_path: str) -> str:
+        return self._read_local_image_as_base64_uncached(image_path)
+
     def _get_image_base64(self, image_url: str = None, image_path: str = None, image_file: str = None) -> str:
         """获取图片的base64编码"""
         _LOGGER.debug(
@@ -177,10 +194,10 @@ class TencentCloudClient:
         try:
             if image_url:
                 _LOGGER.debug("使用图片URL: %s", image_url)
-                return self._download_image_as_base64(image_url)
+                return self._cached_download_image_as_base64(image_url)
             elif image_path:
                 _LOGGER.debug("使用本地图片路径: %s", image_path)
-                return self._read_local_image_as_base64(image_path)
+                return self._cached_read_local_image_as_base64(image_path)
             elif image_file:
                 _LOGGER.debug("使用上传的图片文件")
                 return self._process_uploaded_image_as_base64(image_file)
@@ -192,7 +209,7 @@ class TencentCloudClient:
                 {"image_url": image_url, "image_path": image_path, "error_type": type(ex).__name__}
             )
 
-    def _download_image_as_base64(self, image_url: str) -> str:
+    def _download_image_as_base64_uncached(self, image_url: str) -> str:
         """下载图片并转换为base64编码"""
         try:
             _LOGGER.debug("开始下载图片: %s", image_url)
@@ -204,9 +221,7 @@ class TencentCloudClient:
                     {"url": image_url}
                 )
 
-            session = requests.Session()
-            session.mount('http://', requests.adapters.HTTPAdapter(max_retries=2))
-            session.mount('https://', requests.adapters.HTTPAdapter(max_retries=2))
+            session = self._session
 
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
@@ -251,7 +266,7 @@ class TencentCloudClient:
                 {"url": image_url, "error": str(ex)}
             )
 
-    def _read_local_image_as_base64(self, image_path: str) -> str:
+    def _read_local_image_as_base64_uncached(self, image_path: str) -> str:
         """读取本地图片并转换为base64编码"""
         try:
             if not os.path.exists(image_path):
@@ -717,7 +732,23 @@ class TencentCloudClient:
             except Exception as ex:
                 duration = time.time() - start_time
                 self._log_error("创建人员", request_id, ex, duration)
-                raise
+
+                error_code = None
+                error_message = str(ex)
+
+                if isinstance(ex, TencentCloudSDKException):
+                    error_code = getattr(ex, "code", None)
+                    error_message = getattr(ex, "message", str(ex))
+
+                return {
+                    "success": False,
+                    "person_id": person_id,
+                    "face_id": "",
+                    "face_rect": "",
+                    "error": str(ex),
+                    "error_code": error_code,
+                    "error_message": error_message
+                }
 
         return self._execute_with_retry(api_call, "创建人员")
 
@@ -744,7 +775,21 @@ class TencentCloudClient:
             except Exception as ex:
                 duration = time.time() - start_time
                 self._log_error("删除人员", request_id, ex, duration)
-                raise
+
+                error_code = None
+                error_message = str(ex)
+
+                if isinstance(ex, TencentCloudSDKException):
+                    error_code = getattr(ex, "code", None)
+                    error_message = getattr(ex, "message", str(ex))
+
+                return {
+                    "success": False,
+                    "person_id": person_id,
+                    "error": str(ex),
+                    "error_code": error_code,
+                    "error_message": error_message
+                }
 
         return self._execute_with_retry(api_call, "删除人员")
 
@@ -793,7 +838,23 @@ class TencentCloudClient:
             except Exception as ex:
                 duration = time.time() - start_time
                 self._log_error("注册人脸", request_id, ex, duration)
-                raise
+
+                error_code = None
+                error_message = str(ex)
+
+                if isinstance(ex, TencentCloudSDKException):
+                    error_code = getattr(ex, "code", None)
+                    error_message = getattr(ex, "message", str(ex))
+
+                return {
+                    "success": False,
+                    "person_id": person_id,
+                    "face_ids": [],
+                    "face_rects": [],
+                    "error": str(ex),
+                    "error_code": error_code,
+                    "error_message": error_message
+                }
 
         return self._execute_with_retry(api_call, "注册人脸")
 
@@ -823,7 +884,22 @@ class TencentCloudClient:
             except Exception as ex:
                 duration = time.time() - start_time
                 self._log_error("删除人脸", request_id, ex, duration)
-                raise
+
+                error_code = None
+                error_message = str(ex)
+
+                if isinstance(ex, TencentCloudSDKException):
+                    error_code = getattr(ex, "code", None)
+                    error_message = getattr(ex, "message", str(ex))
+
+                return {
+                    "success": False,
+                    "person_id": person_id,
+                    "face_id": face_id,
+                    "error": str(ex),
+                    "error_code": error_code,
+                    "error_message": error_message
+                }
 
         return self._execute_with_retry(api_call, "删除人脸")
 
@@ -847,6 +923,7 @@ class TencentCloudClient:
                 self._log_response("获取人员库信息", request_id, resp, duration)
 
                 return {
+                    "success": True,
                     "group_name": getattr(resp, "GroupName", ""),
                     "group_tag": getattr(resp, "GroupTag", ""),
                     "face_model_version": getattr(resp, "FaceModelVersion", ""),
@@ -855,7 +932,24 @@ class TencentCloudClient:
             except Exception as ex:
                 duration = time.time() - start_time
                 self._log_error("获取人员库信息", request_id, ex, duration)
-                raise
+
+                error_code = None
+                error_message = str(ex)
+
+                if isinstance(ex, TencentCloudSDKException):
+                    error_code = getattr(ex, "code", None)
+                    error_message = getattr(ex, "message", str(ex))
+
+                return {
+                    "success": False,
+                    "group_name": "",
+                    "group_tag": "",
+                    "face_model_version": "",
+                    "creation_timestamp": 0,
+                    "error": str(ex),
+                    "error_code": error_code,
+                    "error_message": error_message
+                }
 
         return self._execute_with_retry(api_call, "获取人员库信息")
 
@@ -884,7 +978,7 @@ class TencentCloudClient:
             _LOGGER.error("API连接测试失败: %s", self._sanitize_error(str(ex)))
             return False
 
-    def get_person_list(self, group_id: str, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
+    def get_person_list(self, group_id: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
         """获取人员列表"""
         _LOGGER.info("开始获取人员列表: group_id=%s, limit=%d, offset=%d", group_id, limit, offset)
 
@@ -916,26 +1010,55 @@ class TencentCloudClient:
                             "gender": getattr(person_info, "Gender", 0),
                             "face_ids": getattr(person_info, "FaceIds", []),
                         })
-                return persons
+                return {
+                    "success": True,
+                    "persons": persons,
+                    "error": None,
+                    "error_code": None,
+                    "error_message": None
+                }
             except Exception as ex:
                 duration = time.time() - start_time
                 self._log_error("获取人员列表", request_id, ex, duration)
-                raise
+
+                error_code = None
+                error_message = str(ex)
+
+                if isinstance(ex, TencentCloudSDKException):
+                    error_code = getattr(ex, "code", None)
+                    error_message = getattr(ex, "message", str(ex))
+
+                return {
+                    "success": False,
+                    "persons": [],
+                    "error": str(ex),
+                    "error_code": error_code,
+                    "error_message": error_message
+                }
 
         return self._execute_with_retry(api_call, "获取人员列表")
 
-    def get_person_list_all(self, group_id: str) -> List[Dict[str, Any]]:
+    def get_person_list_all(self, group_id: str) -> Dict[str, Any]:
         """获取人员列表（自动分页获取全部）"""
         all_persons = []
         offset = 0
         limit = 100
         while True:
-            persons = self.get_person_list(group_id, limit=limit, offset=offset)
+            result = self.get_person_list(group_id, limit=limit, offset=offset)
+            if not result.get("success", False):
+                return result
+            persons = result.get("persons", [])
             all_persons.extend(persons)
             if len(persons) < limit:
                 break
             offset += limit
-        return all_persons
+        return {
+            "success": True,
+            "persons": all_persons,
+            "error": None,
+            "error_code": None,
+            "error_message": None
+        }
 
     def _execute_with_retry(self, api_call: Callable, operation_name: str) -> Any:
         """执行带重试的API调用，max_attempts 为总尝试次数（1次初始 + N次重试）"""

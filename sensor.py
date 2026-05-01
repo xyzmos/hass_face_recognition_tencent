@@ -47,13 +47,15 @@ class TencentFaceCoordinator(DataUpdateCoordinator):
                 self.entry, CONF_PERSON_GROUP_ID, DEFAULT_PERSON_GROUP_ID
             )
 
-            group_info = await self.hass.async_add_executor_job(
+            group_result = await self.hass.async_add_executor_job(
                 self.client.get_group_info, group_id
             )
+            group_info = group_result if group_result.get("success", False) else {}
 
-            persons = await self.hass.async_add_executor_job(
+            persons_result = await self.hass.async_add_executor_job(
                 self.client.get_person_list_all, group_id
             )
+            persons = persons_result.get("persons", []) if persons_result.get("success", False) else []
 
             return {
                 "group_info": group_info,

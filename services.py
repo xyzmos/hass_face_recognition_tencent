@@ -1,7 +1,7 @@
 """服务定义"""
 
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any
 
 import voluptuous as vol
 
@@ -115,7 +115,6 @@ DELETE_FACE_SCHEMA = vol.Schema({
 
 
 async def async_setup_services(hass: HomeAssistant) -> None:
-    """设置服务"""
     if hass.services.has_service(DOMAIN, SERVICE_FACE_SEARCH):
         return
 
@@ -179,7 +178,6 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
 
 async def async_unload_services(hass: HomeAssistant) -> None:
-    """卸载服务"""
     if any(hass.config_entries.async_entries(DOMAIN)):
         return
 
@@ -198,7 +196,6 @@ async def async_unload_services(hass: HomeAssistant) -> None:
 
 
 def _get_entry_data(hass: HomeAssistant, config_entry_id: str = None):
-    """获取配置项数据，支持多配置条目"""
     domain_data = hass.data.get(DOMAIN, {})
     if config_entry_id:
         data = domain_data.get(config_entry_id)
@@ -212,44 +209,62 @@ def _get_entry_data(hass: HomeAssistant, config_entry_id: str = None):
     return None
 
 
-async def async_face_search_service(call: ServiceCall) -> Dict[str, Any]:
-    """人脸搜索服务"""
-    hass = call.hass
-    data = call.data
-
-    entry_data = _get_entry_data(hass, data.get(ATTR_CONFIG_ENTRY_ID))
+def _get_face_recognition(hass: HomeAssistant, config_entry_id: str = None):
+    entry_data = _get_entry_data(hass, config_entry_id)
     if not entry_data:
         raise HomeAssistantError("未找到腾讯云人脸识别配置")
-
     face_recognition = entry_data.get("face_recognition")
     if not face_recognition:
         raise HomeAssistantError("腾讯云人脸识别插件未正确初始化")
+    return face_recognition
+
+
+def _check_result(result: Dict[str, Any], operation_name: str) -> Dict[str, Any]:
+    if not result.get("success", False):
+        error_msg = result.get("error_message", result.get("error", "未知错误"))
+        raise HomeAssistantError(f"{operation_name}失败: {error_msg}")
+    return result
+
+
+async def _call_service(
+    call: ServiceCall,
+    operation_name: str,
+    method_name: str,
+    **kwargs,
+) -> Dict[str, Any]:
+    face_recognition = _get_face_recognition(call.hass, call.data.get(ATTR_CONFIG_ENTRY_ID))
+    try:
+        method = getattr(face_recognition, method_name)
+        result = await method(**kwargs)
+        return _check_result(result, operation_name)
+    except HomeAssistantError:
+        raise
+    except Exception as ex:
+        _LOGGER.error("%s服务调用失败: %s", operation_name, ex)
+        raise HomeAssistantError(f"{operation_name}服务调用失败: {ex}")
+
+
+async def async_face_search_service(call: ServiceCall) -> Dict[str, Any]:
+    data = call.data
+    hass = call.hass
+
+    face_recognition = _get_face_recognition(hass, data.get(ATTR_CONFIG_ENTRY_ID))
+    group_id = data.get(ATTR_GROUP_ID)
+    camera_entity_id = data.get(ATTR_CAMERA_ENTITY_ID)
 
     try:
-        group_id = data.get(ATTR_GROUP_ID)
-        image_url = data.get(ATTR_IMAGE_URL)
-        image_path = data.get(ATTR_IMAGE_PATH)
-        image_file = data.get(ATTR_IMAGE_FILE)
-        camera_entity_id = data.get(ATTR_CAMERA_ENTITY_ID)
-        max_face_num = data.get(ATTR_MAX_FACE_NUM, 1)
-        min_face_size = data.get(ATTR_MIN_FACE_SIZE, 34)
-        max_user_num = data.get(ATTR_MAX_USER_NUM, 5)
-        quality_control = data.get(ATTR_QUALITY_CONTROL, 1)
-        need_rotate_check = data.get(ATTR_NEED_ROTATE_CHECK, 1)
-        face_match_threshold = data.get(ATTR_FACE_MATCH_THRESHOLD, 60.0)
-
         result = await face_recognition.async_search_faces(
-            image_url=image_url,
-            image_path=image_path,
-            image_file=image_file,
+            image_url=data.get(ATTR_IMAGE_URL),
+            image_path=data.get(ATTR_IMAGE_PATH),
+            image_file=data.get(ATTR_IMAGE_FILE),
             camera_entity_id=camera_entity_id,
             group_ids=[group_id],
-            max_face_num=max_face_num,
-            min_face_size=min_face_size,
-            max_user_num=max_user_num,
-            quality_control=quality_control,
-            need_rotate_check=need_rotate_check,
-            face_match_threshold=face_match_threshold
+            max_face_num=data.get(ATTR_MAX_FACE_NUM, 1),
+            min_face_size=data.get(ATTR_MIN_FACE_SIZE, 34),
+            max_user_num=data.get(ATTR_MAX_USER_NUM, 5),
+            quality_control=data.get(ATTR_QUALITY_CONTROL, 1),
+            need_rotate_check=data.get(ATTR_NEED_ROTATE_CHECK, 1),
+            face_match_threshold=data.get(ATTR_FACE_MATCH_THRESHOLD, 60.0),
         )
 
         if result.get("success", False):
@@ -274,229 +289,88 @@ async def async_face_search_service(call: ServiceCall) -> Dict[str, Any]:
 
 
 async def async_detect_face_service(call: ServiceCall) -> Dict[str, Any]:
-    """人脸检测服务"""
-    hass = call.hass
     data = call.data
-
-    entry_data = _get_entry_data(hass, data.get(ATTR_CONFIG_ENTRY_ID))
-    if not entry_data:
-        raise HomeAssistantError("未找到腾讯云人脸识别配置")
-
-    face_recognition = entry_data.get("face_recognition")
-    if not face_recognition:
-        raise HomeAssistantError("腾讯云人脸识别插件未正确初始化")
-
-    try:
-        image_url = data.get(ATTR_IMAGE_URL)
-        image_path = data.get(ATTR_IMAGE_PATH)
-        image_file = data.get(ATTR_IMAGE_FILE)
-        camera_entity_id = data.get(ATTR_CAMERA_ENTITY_ID)
-        max_face_num = data.get(ATTR_MAX_FACE_NUM, 1)
-        min_face_size = data.get(ATTR_MIN_FACE_SIZE, 34)
-        need_rotate_check = data.get(ATTR_NEED_ROTATE_CHECK, 1)
-
-        result = await face_recognition.async_detect_faces(
-            image_url=image_url,
-            image_path=image_path,
-            image_file=image_file,
-            camera_entity_id=camera_entity_id,
-            max_face_num=max_face_num,
-            min_face_size=min_face_size,
-            need_rotate_check=need_rotate_check
-        )
-
-        if not result.get("success", False):
-            error_msg = result.get("error_message", result.get("error", "未知错误"))
-            raise HomeAssistantError(f"人脸检测失败: {error_msg}")
-
-        return result
-
-    except HomeAssistantError:
-        raise
-    except Exception as ex:
-        _LOGGER.error("人脸检测服务调用失败: %s", ex)
-        raise HomeAssistantError(f"人脸检测服务调用失败: {ex}")
+    return await _call_service(
+        call,
+        "人脸检测",
+        "async_detect_faces",
+        image_url=data.get(ATTR_IMAGE_URL),
+        image_path=data.get(ATTR_IMAGE_PATH),
+        image_file=data.get(ATTR_IMAGE_FILE),
+        camera_entity_id=data.get(ATTR_CAMERA_ENTITY_ID),
+        max_face_num=data.get(ATTR_MAX_FACE_NUM, 1),
+        min_face_size=data.get(ATTR_MIN_FACE_SIZE, 34),
+        need_rotate_check=data.get(ATTR_NEED_ROTATE_CHECK, 1),
+    )
 
 
 async def async_get_face_attributes_service(call: ServiceCall) -> Dict[str, Any]:
-    """获取人脸属性服务"""
-    hass = call.hass
     data = call.data
-
-    entry_data = _get_entry_data(hass, data.get(ATTR_CONFIG_ENTRY_ID))
-    if not entry_data:
-        raise HomeAssistantError("未找到腾讯云人脸识别配置")
-
-    face_recognition = entry_data.get("face_recognition")
-    if not face_recognition:
-        raise HomeAssistantError("腾讯云人脸识别插件未正确初始化")
-
-    try:
-        image_url = data.get(ATTR_IMAGE_URL)
-        image_path = data.get(ATTR_IMAGE_PATH)
-        image_file = data.get(ATTR_IMAGE_FILE)
-        camera_entity_id = data.get(ATTR_CAMERA_ENTITY_ID)
-        max_face_num = data.get(ATTR_MAX_FACE_NUM, 1)
-        need_rotate_check = data.get(ATTR_NEED_ROTATE_CHECK, 1)
-
-        result = await face_recognition.async_get_face_attributes(
-            image_url=image_url,
-            image_path=image_path,
-            image_file=image_file,
-            camera_entity_id=camera_entity_id,
-            max_face_num=max_face_num,
-            need_rotate_check=need_rotate_check
-        )
-
-        if not result.get("success", False):
-            error_msg = result.get("error_message", result.get("error", "未知错误"))
-            raise HomeAssistantError(f"获取人脸属性失败: {error_msg}")
-
-        return result
-
-    except HomeAssistantError:
-        raise
-    except Exception as ex:
-        _LOGGER.error("获取人脸属性服务调用失败: %s", ex)
-        raise HomeAssistantError(f"获取人脸属性服务调用失败: {ex}")
+    return await _call_service(
+        call,
+        "获取人脸属性",
+        "async_get_face_attributes",
+        image_url=data.get(ATTR_IMAGE_URL),
+        image_path=data.get(ATTR_IMAGE_PATH),
+        image_file=data.get(ATTR_IMAGE_FILE),
+        camera_entity_id=data.get(ATTR_CAMERA_ENTITY_ID),
+        max_face_num=data.get(ATTR_MAX_FACE_NUM, 1),
+        need_rotate_check=data.get(ATTR_NEED_ROTATE_CHECK, 1),
+    )
 
 
 async def async_create_person_service(call: ServiceCall) -> Dict[str, Any]:
-    """创建人员服务"""
-    hass = call.hass
     data = call.data
-
-    entry_data = _get_entry_data(hass, data.get(ATTR_CONFIG_ENTRY_ID))
-    if not entry_data:
-        raise HomeAssistantError("未找到腾讯云人脸识别配置")
-
-    face_recognition = entry_data.get("face_recognition")
-    if not face_recognition:
-        raise HomeAssistantError("腾讯云人脸识别插件未正确初始化")
-
-    try:
-        result = await face_recognition.async_create_person(
-            person_id=data.get(ATTR_PERSON_ID),
-            person_name=data.get(ATTR_PERSON_NAME),
-            group_id=data.get(ATTR_GROUP_ID),
-            image_url=data.get(ATTR_IMAGE_URL),
-            image_path=data.get(ATTR_IMAGE_PATH),
-            image_file=data.get(ATTR_IMAGE_FILE),
-            camera_entity_id=data.get(ATTR_CAMERA_ENTITY_ID),
-            gender=data.get(ATTR_GENDER),
-            person_tag=data.get(ATTR_PERSON_TAG),
-            quality_control=data.get(ATTR_QUALITY_CONTROL, 1),
-            need_rotate_check=data.get(ATTR_NEED_ROTATE_CHECK, 1),
-        )
-
-        if not result.get("success", False):
-            error_msg = result.get("error_message", result.get("error", "未知错误"))
-            raise HomeAssistantError(f"创建人员失败: {error_msg}")
-
-        return result
-
-    except HomeAssistantError:
-        raise
-    except Exception as ex:
-        _LOGGER.error("创建人员服务调用失败: %s", ex)
-        raise HomeAssistantError(f"创建人员服务调用失败: {ex}")
+    return await _call_service(
+        call,
+        "创建人员",
+        "async_create_person",
+        person_id=data.get(ATTR_PERSON_ID),
+        person_name=data.get(ATTR_PERSON_NAME),
+        group_id=data.get(ATTR_GROUP_ID),
+        image_url=data.get(ATTR_IMAGE_URL),
+        image_path=data.get(ATTR_IMAGE_PATH),
+        image_file=data.get(ATTR_IMAGE_FILE),
+        camera_entity_id=data.get(ATTR_CAMERA_ENTITY_ID),
+        gender=data.get(ATTR_GENDER),
+        person_tag=data.get(ATTR_PERSON_TAG),
+        quality_control=data.get(ATTR_QUALITY_CONTROL, 1),
+        need_rotate_check=data.get(ATTR_NEED_ROTATE_CHECK, 1),
+    )
 
 
 async def async_delete_person_service(call: ServiceCall) -> Dict[str, Any]:
-    """删除人员服务"""
-    hass = call.hass
     data = call.data
-
-    entry_data = _get_entry_data(hass, data.get(ATTR_CONFIG_ENTRY_ID))
-    if not entry_data:
-        raise HomeAssistantError("未找到腾讯云人脸识别配置")
-
-    face_recognition = entry_data.get("face_recognition")
-    if not face_recognition:
-        raise HomeAssistantError("腾讯云人脸识别插件未正确初始化")
-
-    try:
-        result = await face_recognition.async_delete_person(
-            person_id=data.get(ATTR_PERSON_ID),
-        )
-
-        if not result.get("success", False):
-            error_msg = result.get("error_message", result.get("error", "未知错误"))
-            raise HomeAssistantError(f"删除人员失败: {error_msg}")
-
-        return result
-
-    except HomeAssistantError:
-        raise
-    except Exception as ex:
-        _LOGGER.error("删除人员服务调用失败: %s", ex)
-        raise HomeAssistantError(f"删除人员服务调用失败: {ex}")
+    return await _call_service(
+        call,
+        "删除人员",
+        "async_delete_person",
+        person_id=data.get(ATTR_PERSON_ID),
+    )
 
 
 async def async_create_face_service(call: ServiceCall) -> Dict[str, Any]:
-    """注册人脸服务"""
-    hass = call.hass
     data = call.data
-
-    entry_data = _get_entry_data(hass, data.get(ATTR_CONFIG_ENTRY_ID))
-    if not entry_data:
-        raise HomeAssistantError("未找到腾讯云人脸识别配置")
-
-    face_recognition = entry_data.get("face_recognition")
-    if not face_recognition:
-        raise HomeAssistantError("腾讯云人脸识别插件未正确初始化")
-
-    try:
-        result = await face_recognition.async_create_face(
-            person_id=data.get(ATTR_PERSON_ID),
-            image_url=data.get(ATTR_IMAGE_URL),
-            image_path=data.get(ATTR_IMAGE_PATH),
-            image_file=data.get(ATTR_IMAGE_FILE),
-            camera_entity_id=data.get(ATTR_CAMERA_ENTITY_ID),
-            quality_control=data.get(ATTR_QUALITY_CONTROL, 1),
-            need_rotate_check=data.get(ATTR_NEED_ROTATE_CHECK, 1),
-        )
-
-        if not result.get("success", False):
-            error_msg = result.get("error_message", result.get("error", "未知错误"))
-            raise HomeAssistantError(f"注册人脸失败: {error_msg}")
-
-        return result
-
-    except HomeAssistantError:
-        raise
-    except Exception as ex:
-        _LOGGER.error("注册人脸服务调用失败: %s", ex)
-        raise HomeAssistantError(f"注册人脸服务调用失败: {ex}")
+    return await _call_service(
+        call,
+        "注册人脸",
+        "async_create_face",
+        person_id=data.get(ATTR_PERSON_ID),
+        image_url=data.get(ATTR_IMAGE_URL),
+        image_path=data.get(ATTR_IMAGE_PATH),
+        image_file=data.get(ATTR_IMAGE_FILE),
+        camera_entity_id=data.get(ATTR_CAMERA_ENTITY_ID),
+        quality_control=data.get(ATTR_QUALITY_CONTROL, 1),
+        need_rotate_check=data.get(ATTR_NEED_ROTATE_CHECK, 1),
+    )
 
 
 async def async_delete_face_service(call: ServiceCall) -> Dict[str, Any]:
-    """删除人脸服务"""
-    hass = call.hass
     data = call.data
-
-    entry_data = _get_entry_data(hass, data.get(ATTR_CONFIG_ENTRY_ID))
-    if not entry_data:
-        raise HomeAssistantError("未找到腾讯云人脸识别配置")
-
-    face_recognition = entry_data.get("face_recognition")
-    if not face_recognition:
-        raise HomeAssistantError("腾讯云人脸识别插件未正确初始化")
-
-    try:
-        result = await face_recognition.async_delete_face(
-            person_id=data.get(ATTR_PERSON_ID),
-            face_id=data.get(ATTR_FACE_ID),
-        )
-
-        if not result.get("success", False):
-            error_msg = result.get("error_message", result.get("error", "未知错误"))
-            raise HomeAssistantError(f"删除人脸失败: {error_msg}")
-
-        return result
-
-    except HomeAssistantError:
-        raise
-    except Exception as ex:
-        _LOGGER.error("删除人脸服务调用失败: %s", ex)
-        raise HomeAssistantError(f"删除人脸服务调用失败: {ex}")
+    return await _call_service(
+        call,
+        "删除人脸",
+        "async_delete_face",
+        person_id=data.get(ATTR_PERSON_ID),
+        face_id=data.get(ATTR_FACE_ID),
+    )
