@@ -5,12 +5,12 @@
   "documentation": "https://code.nextrt.com/Hass/tencent_face_recognition",
   "issue_tracker": "https://code.nextrt.com/Hass/tencent_face_recognition/issues",
   "requirements": [
-    "tencentcloud-sdk-python-common",
-    "tencentcloud-sdk-python-iai"
+    "tencentcloud-sdk-python-common>=3.0.0,<4.0.0",
+    "tencentcloud-sdk-python-iai>=3.0.0,<4.0.0"
   ],
   "dependencies": [],
   "codeowners": ["@xyzmos"],
-  "version": "1.0.0",
+  "version": "2.0.0",
   "iot_class": "cloud_polling",
   "resources": []
 }

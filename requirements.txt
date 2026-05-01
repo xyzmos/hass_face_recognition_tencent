@@ -1,2 +1,2 @@
-tencentcloud-sdk-python-common>=3.0.0
-tencentcloud-sdk-python-iai>=3.0.0
+tencentcloud-sdk-python-common>=3.0.0,<4.0.0
+tencentcloud-sdk-python-iai>=3.0.0,<4.0.0
