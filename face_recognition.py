@@ -53,7 +53,6 @@ class FaceRecognition:
                 image_file,
             )
         raise ValueError("必须提供image_url、image_path、image_file或camera_entity_id")
-
     async def _get_camera_image_base64(self, camera_entity_id: str) -> str:
         try:
             from homeassistant.components.camera import async_get_image
@@ -151,11 +150,13 @@ class FaceRecognition:
         return result
 
     def _process_search_results(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """规范化搜索结果字段（保留客户端返回的全部信息）。"""
         processed_results = []
         for result in results:
             processed_result = {
                 "face_id": result.get("face_id"),
-                "candidates": []
+                "face_rect": result.get("face_rect"),
+                "candidates": [],
             }
 
             for candidate in result.get("candidates", []):
@@ -163,7 +164,9 @@ class FaceRecognition:
                     "person_id": candidate.get("person_id"),
                     "person_name": candidate.get("person_name"),
                     "score": candidate.get("score"),
-                    "person_tag": candidate.get("person_tag")
+                    "face_id": candidate.get("face_id"),
+                    "gender": candidate.get("gender"),
+                    "person_group_infos": candidate.get("person_group_infos", []),
                 }
                 processed_result["candidates"].append(processed_candidate)
 

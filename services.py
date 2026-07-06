@@ -8,6 +8,7 @@ import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.service import SupportsResponse
 
 from .const import (
     DOMAIN,
@@ -125,7 +126,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         SERVICE_FACE_SEARCH,
         async_face_search_service,
         schema=FACE_SEARCH_SCHEMA,
-        supports_response=True
+        supports_response=SupportsResponse.OPTIONAL,
     )
 
     hass.services.async_register(
@@ -133,7 +134,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         SERVICE_DETECT_FACE,
         async_detect_face_service,
         schema=DETECT_FACE_SCHEMA,
-        supports_response=True
+        supports_response=SupportsResponse.OPTIONAL,
     )
 
     hass.services.async_register(
@@ -141,7 +142,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         SERVICE_GET_FACE_ATTRIBUTES,
         async_get_face_attributes_service,
         schema=GET_FACE_ATTRIBUTES_SCHEMA,
-        supports_response=True
+        supports_response=SupportsResponse.OPTIONAL,
     )
 
     hass.services.async_register(
@@ -149,7 +150,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         SERVICE_CREATE_PERSON,
         async_create_person_service,
         schema=CREATE_PERSON_SCHEMA,
-        supports_response=True
+        supports_response=SupportsResponse.OPTIONAL,
     )
 
     hass.services.async_register(
@@ -157,7 +158,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         SERVICE_DELETE_PERSON,
         async_delete_person_service,
         schema=DELETE_PERSON_SCHEMA,
-        supports_response=True
+        supports_response=SupportsResponse.OPTIONAL,
     )
 
     hass.services.async_register(
@@ -165,7 +166,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         SERVICE_CREATE_FACE,
         async_create_face_service,
         schema=CREATE_FACE_SCHEMA,
-        supports_response=True
+        supports_response=SupportsResponse.OPTIONAL,
     )
 
     hass.services.async_register(
@@ -173,7 +174,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         SERVICE_DELETE_FACE,
         async_delete_face_service,
         schema=DELETE_FACE_SCHEMA,
-        supports_response=True
+        supports_response=SupportsResponse.OPTIONAL,
     )
 
 
@@ -274,7 +275,8 @@ async def async_face_search_service(call: ServiceCall) -> Dict[str, Any]:
                         ATTR_PERSON_ID: candidate.get("person_id"),
                         ATTR_PERSON_NAME: candidate.get("person_name"),
                         "score": candidate.get("score"),
-                        ATTR_PERSON_TAG: candidate.get("person_tag"),
+                        ATTR_FACE_ID: candidate.get("face_id"),
+                        "gender": candidate.get("gender"),
                         ATTR_GROUP_ID: group_id,
                         ATTR_CAMERA_ENTITY_ID: camera_entity_id,
                     })

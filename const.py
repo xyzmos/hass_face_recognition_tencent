@@ -7,6 +7,7 @@ CONF_SECRET_ID = "secret_id"
 CONF_SECRET_KEY = "secret_key"
 CONF_REGION = "region"
 CONF_PERSON_GROUP_ID = "person_group_id"
+CONF_SCAN_INTERVAL = "scan_interval"
 
 DEFAULT_REGION = "ap-shanghai"
 DEFAULT_PERSON_GROUP_ID = "Hass"
@@ -16,6 +17,7 @@ DEFAULT_MAX_USER_NUM = 5
 DEFAULT_QUALITY_CONTROL = 1
 DEFAULT_NEED_ROTATE_CHECK = 1
 DEFAULT_FACE_MATCH_THRESHOLD = 60.0
+DEFAULT_SCAN_INTERVAL = 300  # seconds (5 minutes)
 
 SERVICE_FACE_SEARCH = "face_search"
 SERVICE_DETECT_FACE = "detect_face"
@@ -44,6 +46,10 @@ ATTR_FACE_ID = "face_id"
 ATTR_PERSON_TAG = "person_tag"
 
 EVENT_FACE_DETECTED = "face_detected"
+
+# Sensor identifiers
+SENSOR_STATUS = "status"
+SENSOR_PERSON = "person"
 
 ERROR_INVALID_CONFIG = "无效的配置"
 ERROR_API_ERROR = "API调用错误"

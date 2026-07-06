@@ -258,22 +258,51 @@ class QuotaExceededError(TencentFaceRecognitionError):
 
 
 def handle_api_error(error_code: str, error_message: str) -> None:
-    """处理API错误"""
+    """处理API错误。
+
+    先尝试精确匹配，再用前缀匹配，最后回退到通用 ``ApiError``。
+    """
     error_mapping = {
         "FailedOperation.ImageDecodeFailed": (ImageNotFoundError, "image_decode_failed"),
+        "FailedOperation.ImageSizeTooLarge": (ImageNotFoundError, "image_too_large"),
         "InvalidParameterValue.NoFaceInPhoto": (FaceNotDetectedError, "face_not_detected"),
+        "FailedOperation.NoFaceInPhoto": (FaceNotDetectedError, "face_not_detected"),
+        "FailedOperation.FaceSizeTooSmall": (FaceNotDetectedError, "face_too_small"),
         "FailedOperation.PersonNotFound": (PersonNotFoundError, "person_not_found"),
         "FailedOperation.GroupNotFound": (PersonGroupNotFoundError, "group_not_found"),
         "FailedOperation.FaceNotFound": (FaceNotFoundError, "face_not_found"),
-        "AuthFailure": (AuthenticationError, "auth_failure"),
+        "FailedOperation.ConflictInstance": (ApiError, "invalid_parameter"),
+        "AuthFailure.SignatureFailure": (AuthenticationError, "auth_failure"),
+        "AuthFailure.SecretIdNotFound": (AuthenticationError, "auth_failure"),
         "RequestLimitExceeded": (RateLimitError, "rate_limit_exceeded"),
         "RequestQuotaExceeded": (QuotaExceededError, "quota_exceeded"),
         "ResourceUnavailable.NetworkError": (NetworkError, "network_error"),
     }
 
-    error_info = error_mapping.get(error_code, (ApiError, "api_error"))
-    error_class = error_info[0]
-    error_key = error_info[1]
+    error_class = None
+    error_key = None
+
+    if error_code in error_mapping:
+        error_class, error_key = error_mapping[error_code]
+    else:
+        for prefix in ("AuthFailure", "InvalidParameter", "ResourceNotFound",
+                       "LimitExceeded", "FailedOperation"):
+            if error_code.startswith(prefix):
+                _LOGGER.debug("按前缀匹配错误码: %s -> %s", error_code, prefix)
+                if prefix == "AuthFailure":
+                    error_class, error_key = AuthenticationError, "auth_failure"
+                elif prefix == "InvalidParameter":
+                    error_class, error_key = ApiError, "invalid_parameter"
+                elif prefix == "ResourceNotFound":
+                    error_class, error_key = ApiError, "api_error"
+                elif prefix == "LimitExceeded":
+                    error_class, error_key = RateLimitError, "rate_limit_exceeded"
+                else:
+                    error_class, error_key = ApiError, "api_error"
+                break
+
+    if error_class is None:
+        error_class, error_key = ApiError, "api_error"
 
     _LOGGER.error("腾讯云API错误: %s - %s", error_code, error_message)
 
@@ -290,17 +319,28 @@ def handle_api_error(error_code: str, error_message: str) -> None:
 
 
 def log_and_raise_error(error_class, message: str, details: Dict[str, Any] = None, error_key: Optional[str] = None) -> None:
-    """记录日志并抛出错误"""
-    if details:
-        _LOGGER.error("%s: %s", error_class.__name__, message)
-    else:
-        _LOGGER.error("%s: %s", error_class.__name__, message)
+    """记录日志并抛出错误。
 
-    raise error_class(
-        message,
-        error_key=error_key,
-        error_details=details or {}
-    )
+    ``error_class`` 必须是 ``TencentFaceRecognitionError``（或 ``HomeAssistantError``）
+    的子类，以保证上层 ``except HomeAssistantError`` 能正确捕获。
+    如果传入的 ``error_class`` 无法构造为带 ``error_key``/``error_details`` 的自定义错误
+    （例如 ``ValueError``），则退化为抛出 ``ApiError``，避免异常类型不可控。
+    """
+    _LOGGER.error("%s: %s", error_class.__name__, message)
+
+    try:
+        raise error_class(
+            message,
+            error_key=error_key,
+            error_details=details or {}
+        )
+    except TypeError:
+        # error_class 不支持 error_key/error_details 关键字参数
+        raise ApiError(
+            message,
+            error_key=error_key,
+            error_details=details or {}
+        ) from None
 
 
 def validate_config(config: Dict[str, Any]) -> None:

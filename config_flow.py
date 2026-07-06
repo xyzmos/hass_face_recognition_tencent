@@ -20,12 +20,11 @@ from .const import (
     DEFAULT_REGION,
 )
 from .errors import (
-    validate_config,
-    InvalidConfigError,
     AuthenticationError,
+    InvalidConfigError,
     NetworkError,
     RateLimitError,
-    log_and_raise_error
+    validate_config,
 )
 from .tencent_cloud_client import TencentCloudClient
 
@@ -36,7 +35,9 @@ class TencentFaceRecognitionConfigFlow(config_entries.ConfigFlow, domain=DOMAIN)
     """腾讯云人脸识别配置流程"""
 
     VERSION = 1
-    CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
+
+    # CONNECTION_CLASS 已在 HA 2024.7 废弃，连接类型现由 manifest.json 的
+    # iot_class 字段声明（本项目为 cloud_polling）。
 
     AVAILABLE_REGIONS = [
         "ap-beijing", "ap-shanghai", "ap-guangzhou", "ap-chengdu",
@@ -64,6 +65,12 @@ class TencentFaceRecognitionConfigFlow(config_entries.ConfigFlow, domain=DOMAIN)
                     return self._show_user_form(errors)
 
                 validate_config(user_input)
+
+                # 防止重复配置：以 secret_id 作为唯一标识
+                await self.async_set_unique_id(
+                    f"{DOMAIN}_{user_input.get(CONF_SECRET_ID)}"
+                )
+                self._abort_if_unique_id_configured()
 
                 validation_result = await self._validate_tencent_cloud_credentials(user_input)
 
@@ -137,6 +144,7 @@ class TencentFaceRecognitionConfigFlow(config_entries.ConfigFlow, domain=DOMAIN)
 
     async def _validate_tencent_cloud_credentials(self, user_input: Dict[str, Any]) -> Dict[str, Any]:
         """验证腾讯云凭据 - 通过真实API调用验证"""
+        client = None
         try:
             _LOGGER.info("开始验证腾讯云凭据")
 
@@ -186,6 +194,9 @@ class TencentFaceRecognitionConfigFlow(config_entries.ConfigFlow, domain=DOMAIN)
                     "base": f"腾讯云API验证失败: {str(ex)}"
                 }
             }
+        finally:
+            if client is not None:
+                await self.hass.async_add_executor_job(client.close)
 
     @staticmethod
     @callback
@@ -252,6 +263,7 @@ class TencentFaceRecognitionOptionsFlow(config_entries.OptionsFlow):
                 errors[CONF_PERSON_GROUP_ID] = "人员库ID只能包含字母、数字、连字符和下划线，长度1-64个字符"
 
             if not errors:
+                client = None
                 try:
                     client = TencentCloudClient(
                         self._data.get(CONF_SECRET_ID),
@@ -287,6 +299,9 @@ class TencentFaceRecognitionOptionsFlow(config_entries.OptionsFlow):
                 except Exception as ex:
                     _LOGGER.error("配置验证失败: %s", ex)
                     errors["base"] = f"配置验证失败: {str(ex)}"
+                finally:
+                    if client is not None:
+                        await self.hass.async_add_executor_job(client.close)
 
         options = {
             vol.Optional(
@@ -316,6 +331,7 @@ class TencentFaceRecognitionOptionsFlow(config_entries.OptionsFlow):
         connection_status = "未知"
 
         if user_input is None:
+            client = None
             try:
                 client = TencentCloudClient(
                     self._data.get(CONF_SECRET_ID),
@@ -324,7 +340,7 @@ class TencentFaceRecognitionOptionsFlow(config_entries.OptionsFlow):
                 )
 
                 success = await self.hass.async_add_executor_job(
-                    client._test_api_connection,
+                    client.test_api_connection,
                     self._data.get(CONF_PERSON_GROUP_ID, "Hass")
                 )
 
@@ -346,6 +362,9 @@ class TencentFaceRecognitionOptionsFlow(config_entries.OptionsFlow):
                 connection_status = f"测试失败: {str(ex)}"
                 errors["base"] = f"连接测试失败: {str(ex)}"
                 _LOGGER.error("连接测试失败: %s", ex)
+            finally:
+                if client is not None:
+                    await self.hass.async_add_executor_job(client.close)
 
         return self.async_show_form(
             step_id="test_connection",
@@ -361,21 +380,22 @@ class TencentFaceRecognitionOptionsFlow(config_entries.OptionsFlow):
         errors = {}
 
         if user_input is not None:
+            temp_errors = {}
+            self._validate_input_format(user_input, temp_errors)
+
+            if temp_errors:
+                errors = temp_errors
+                return self.async_show_form(
+                    step_id="reauth",
+                    data_schema=vol.Schema({
+                        vol.Required(CONF_SECRET_ID, default=self._data.get(CONF_SECRET_ID, "")): str,
+                        vol.Required(CONF_SECRET_KEY, default=self._data.get(CONF_SECRET_KEY, "")): str,
+                    }),
+                    errors=errors,
+                )
+
+            new_client = None
             try:
-                temp_errors = {}
-                self._validate_input_format(user_input, temp_errors)
-
-                if temp_errors:
-                    errors = temp_errors
-                    return self.async_show_form(
-                        step_id="reauth",
-                        data_schema=vol.Schema({
-                            vol.Required(CONF_SECRET_ID, default=self._data.get(CONF_SECRET_ID, "")): str,
-                            vol.Required(CONF_SECRET_KEY, default=self._data.get(CONF_SECRET_KEY, "")): str,
-                        }),
-                        errors=errors,
-                    )
-
                 new_client = TencentCloudClient(
                     user_input[CONF_SECRET_ID],
                     user_input[CONF_SECRET_KEY],
@@ -405,6 +425,9 @@ class TencentFaceRecognitionOptionsFlow(config_entries.OptionsFlow):
             except Exception as ex:
                 _LOGGER.error("重新认证失败: %s", ex)
                 errors["base"] = f"重新认证失败: {str(ex)}"
+            finally:
+                if new_client is not None:
+                    await self.hass.async_add_executor_job(new_client.close)
 
         return self.async_show_form(
             step_id="reauth",

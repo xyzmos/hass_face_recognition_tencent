@@ -84,6 +84,74 @@ face_search:
             - label: "是"
               value: "1"
 
+detect_face:
+  name: 人脸检测
+  description: 检测图片中的人脸位置和尺寸。
+  fields:
+    image_url:
+      name: 图片URL
+      description: 要检测的人脸图片的 URL。
+      example: "https://example.com/image.jpg"
+      selector:
+        text:
+    image_path:
+      name: 图片路径
+      description: 要检测的本地人脸图片路径。
+      example: "/config/www/image.jpg"
+      selector:
+        text:
+    image_file:
+      name: 图片文件
+      description: 要检测的人脸图片文件（Base64编码）。
+      selector:
+        text:
+    camera_entity_id:
+      name: 摄像头实体
+      description: 用于获取图片的摄像头实体ID。
+      example: "camera.front_door"
+      selector:
+        entity:
+          domain: camera
+    config_entry_id:
+      name: 配置项ID
+      description: 使用的配置项ID（多配置时指定）。
+      selector:
+        text:
+    max_face_num:
+      name: 最大人脸数量
+      description: 最多检测的人脸数量。
+      default: 1
+      example: 1
+      selector:
+        number:
+          min: 1
+          max: 10
+          step: 1
+          mode: box
+    min_face_size:
+      name: 最小人脸尺寸
+      description: 最小人脸尺寸（像素）。
+      default: 34
+      example: 34
+      selector:
+        number:
+          min: 1
+          max: 200
+          step: 1
+          mode: box
+    need_rotate_check:
+      name: 旋转检查
+      description: 是否进行旋转检查（0=否，1=是）。
+      default: 1
+      example: 1
+      selector:
+        select:
+          options:
+            - label: "否"
+              value: "0"
+            - label: "是"
+              value: "1"
+
 get_face_attributes:
   name: 获取人脸属性
   description: 获取图片中人脸的属性信息。
