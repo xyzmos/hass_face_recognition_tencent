@@ -239,7 +239,8 @@ class TencentFaceRecognitionOptionsFlow(config_entries.OptionsFlow):
                         "options": [
                             {"label": "配置设置", "value": "config"},
                             {"label": "测试连接", "value": "test_connection"},
-                            {"label": "重新认证", "value": "reauth"}
+                            {"label": "重新认证", "value": "reauth"},
+                            {"label": "人员管理", "value": "manage"}
                         ]
                     }
                 })
@@ -247,6 +248,135 @@ class TencentFaceRecognitionOptionsFlow(config_entries.OptionsFlow):
             description_placeholders={
                 "description": "请选择要管理的项目"
             }
+        )
+
+    async def async_step_manage(self, user_input=None):
+        """人员管理步骤：查看列表、创建、删除"""
+        errors: dict[str, str] = {}
+        client = None
+        try:
+            client = TencentCloudClient(
+                self._data.get(CONF_SECRET_ID, ""),
+                self._data.get(CONF_SECRET_KEY, ""),
+                self._data.get(CONF_REGION, DEFAULT_REGION),
+            )
+            result = await self.hass.async_add_executor_job(
+                client.get_person_list_all,
+                self._data.get(CONF_PERSON_GROUP_ID, "Hass"),
+            )
+            persons = result.get("persons", []) if result.get("success", False) else []
+
+            if user_input is not None:
+                action = user_input.get("person_action")
+                if action == "refresh":
+                    return await self.async_step_manage()
+                elif action == "create":
+                    return await self.async_step_create_person()
+                elif action == "delete":
+                    selected = user_input.get("selected_person")
+                    if selected:
+                        await self.hass.async_add_executor_job(
+                            client.delete_person, selected
+                        )
+                        _LOGGER.info("人员已删除: %s", selected)
+                        return await self.async_step_manage()
+                    else:
+                        errors["base"] = "请选择要删除的人员"
+
+            person_options = [
+                {"label": f"{p.get('person_name', '未知')} ({p.get('person_id', '')})",
+                 "value": p.get("person_id", "")}
+                for p in persons
+            ]
+
+            schema = vol.Schema({
+                vol.Required("person_action"): selector({
+                    "select": {
+                        "options": [
+                            {"label": "刷新列表", "value": "refresh"},
+                            {"label": "创建人员", "value": "create"},
+                            {"label": "删除选中人员", "value": "delete"},
+                        ]
+                    }
+                }),
+            })
+            if person_options:
+                schema = schema.extend({
+                    vol.Optional("selected_person"): selector({
+                        "select": {
+                            "options": person_options
+                        }
+                    })
+                })
+
+            return self.async_show_form(
+                step_id="manage",
+                data_schema=schema,
+                errors=errors,
+                description_placeholders={
+                    "person_count": str(len(persons)),
+                    "group_id": self._data.get(CONF_PERSON_GROUP_ID, "Hass"),
+                }
+            )
+        except Exception as ex:
+            _LOGGER.error("人员管理加载失败: %s", ex)
+            errors["base"] = f"加载人员列表失败: {ex}"
+            return self.async_show_form(
+                step_id="manage",
+                data_schema=vol.Schema({}),
+                errors=errors,
+            )
+        finally:
+            if client is not None:
+                await self.hass.async_add_executor_job(client.close)
+
+    async def async_step_create_person(self, user_input=None):
+        """创建人员步骤"""
+        errors: dict[str, str] = {}
+        client = None
+        if user_input is not None:
+            person_id = user_input.get("person_id")
+            person_name = user_input.get("person_name")
+            camera = user_input.get("camera_entity")
+            try:
+                client = TencentCloudClient(
+                    self._data.get(CONF_SECRET_ID, ""),
+                    self._data.get(CONF_SECRET_KEY, ""),
+                    self._data.get(CONF_REGION, DEFAULT_REGION),
+                )
+                from homeassistant.components.camera import async_get_image
+                import base64
+                image = await async_get_image(self.hass, camera)
+                image_base64 = base64.b64encode(image.content).decode("utf-8")
+
+                result = await self.hass.async_add_executor_job(
+                    client.create_person,
+                    person_id, person_name,
+                    self._data.get(CONF_PERSON_GROUP_ID, "Hass"),
+                    None, None, None, image_base64,
+                )
+                if result.get("success", False):
+                    _LOGGER.info("人员创建成功: %s", person_id)
+                    return await self.async_step_manage()
+                else:
+                    errors["base"] = f"创建失败: {result.get('error_message', '未知错误')}"
+            except Exception as ex:
+                errors["base"] = f"创建人员失败: {ex}"
+                _LOGGER.error("创建人员失败: %s", ex)
+            finally:
+                if client is not None:
+                    await self.hass.async_add_executor_job(client.close)
+
+        return self.async_show_form(
+            step_id="create_person",
+            data_schema=vol.Schema({
+                vol.Required("person_id"): str,
+                vol.Required("person_name"): str,
+                vol.Required("camera_entity"): selector({
+                    "entity": {"domain": "camera"}
+                }),
+            }),
+            errors=errors,
         )
 
     async def async_step_config(self, user_input=None):

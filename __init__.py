@@ -4,12 +4,16 @@
 
 from __future__ import annotations
 
+import base64
 import logging
 from typing import Any, Dict
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
+
+from homeassistant.components import websocket_api
+from homeassistant.components.camera import async_get_image
 
 from .const import (
     CONF_PERSON_GROUP_ID,
@@ -69,7 +73,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # 4. 注册服务
     await async_setup_services(hass)
 
-    # 5. 前向设置平台（sensor）
+    # 5. 注册 WebSocket API 命令
+    websocket_api.async_register_command(hass, ws_list_persons)
+    websocket_api.async_register_command(hass, ws_create_person)
+    websocket_api.async_register_command(hass, ws_delete_person)
+
+    # 6. 前向设置平台（sensor）
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     # 6. 配置项更新时自动重新加载平台
@@ -118,3 +127,103 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
             await hass.async_add_executor_job(data["client"].close)
         except Exception:  # noqa: BLE001
             pass
+
+
+# --- WebSocket API ---------------------------------------------------------
+
+
+@websocket_api.websocket_command({
+    "type": "tencent_face_recognition/list_persons",
+})
+@websocket_api.async_response
+async def ws_list_persons(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: Dict[str, Any]
+) -> None:
+    """列出所有人员。"""
+    entry_data = None
+    for data in hass.data.get(DOMAIN, {}).values():
+        if isinstance(data, dict) and "client" in data:
+            entry_data = data
+            break
+    if not entry_data:
+        connection.send_error(msg["id"], "not_found", "未找到配置")
+        return
+
+    client: TencentCloudClient = entry_data["client"]
+    group_id = entry_data.get("person_group_id", "Hass")
+    try:
+        result = await hass.async_add_executor_job(client.get_person_list_all, group_id)
+        connection.send_result(msg["id"], result)
+    except Exception as ex:
+        _LOGGER.error("列出人员失败: %s", ex)
+        connection.send_error(msg["id"], "api_error", str(ex))
+
+
+@websocket_api.websocket_command({
+    "type": "tencent_face_recognition/create_person",
+    "data": {
+        "person_id": str,
+        "person_name": str,
+        "camera_entity_id": str,
+    },
+})
+@websocket_api.async_response
+async def ws_create_person(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: Dict[str, Any]
+) -> None:
+    """通过摄像头创建人员。"""
+    entry_data = None
+    for data in hass.data.get(DOMAIN, {}).values():
+        if isinstance(data, dict) and "client" in data:
+            entry_data = data
+            break
+    if not entry_data:
+        connection.send_error(msg["id"], "not_found", "未找到配置")
+        return
+
+    client: TencentCloudClient = entry_data["client"]
+    group_id = entry_data.get("person_group_id", "Hass")
+    person_id = msg["data"]["person_id"]
+    person_name = msg["data"]["person_name"]
+    camera_entity_id = msg["data"]["camera_entity_id"]
+
+    try:
+        image = await async_get_image(hass, camera_entity_id)
+        image_base64 = base64.b64encode(image.content).decode("utf-8")
+        result = await hass.async_add_executor_job(
+            client.create_person,
+            person_id, person_name, group_id,
+            None, None, None, image_base64,
+        )
+        connection.send_result(msg["id"], result)
+    except Exception as ex:
+        _LOGGER.error("创建人员失败: %s", ex)
+        connection.send_error(msg["id"], "api_error", str(ex))
+
+
+@websocket_api.websocket_command({
+    "type": "tencent_face_recognition/delete_person",
+    "data": {"person_id": str},
+})
+@websocket_api.async_response
+async def ws_delete_person(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: Dict[str, Any]
+) -> None:
+    """删除人员。"""
+    entry_data = None
+    for data in hass.data.get(DOMAIN, {}).values():
+        if isinstance(data, dict) and "client" in data:
+            entry_data = data
+            break
+    if not entry_data:
+        connection.send_error(msg["id"], "not_found", "未找到配置")
+        return
+
+    client: TencentCloudClient = entry_data["client"]
+    person_id = msg["data"]["person_id"]
+    try:
+        result = await hass.async_add_executor_job(client.delete_person, person_id)
+        connection.send_result(msg["id"], result)
+    except Exception as ex:
+        _LOGGER.error("删除人员失败: %s", ex)
+        connection.send_error(msg["id"], "api_error", str(ex))
