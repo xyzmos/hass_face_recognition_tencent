@@ -1,0 +1,104 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate version matches tag
+        run: |
+          set -e
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          echo "tag=$TAG version=$VERSION"
+          # manifest.json 的 version 必须与 tag 一致
+          MVER=$(python3 -c "import json;print(json.load(open('custom_components/tencent_face_recognition/manifest.json'))['version'])")
+          echo "manifest version=$MVER"
+          if [ "$MVER" != "$VERSION" ]; then
+            echo "::error::manifest version ($MVER) 与 tag ($VERSION) 不一致"
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Build integration zip
+        run: |
+          set -e
+          cd custom_components
+          # zip 根目录即组件目录，HACS zip_release 解压到 custom_components/
+          zip -r "../tencent_face_recognition.zip" tencent_face_recognition \
+            -x "*/__pycache__/*" -x "*.pyc" -x "*/translations/*~*"
+          cd ..
+          ls -lh tencent_face_recognition.zip
+          echo "ASSET=tencent_face_recognition.zip" >> "$GITHUB_ENV"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          set -e
+          PREV=$(git tag --sort=-v:refname | grep -v "^${GITHUB_REF_NAME}$" | head -1 || true)
+          if [ -n "$PREV" ]; then RANGE="${PREV}..${GITHUB_REF_NAME}"; else RANGE="${GITHUB_REF_NAME}"; fi
+          {
+            echo "### 变更内容"
+            git log "$RANGE" --pretty=format:"- %s (%h)" --no-merges || echo "- 详见提交记录"
+          } > changelog.md
+          cat changelog.md
+
+      - name: Create release and upload asset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          python3 - <<'PY'
+          import json, os, urllib.request, urllib.parse
+
+          api = os.environ.get("GITHUB_API_URL", "https://api.github.com")
+          repo = os.environ["GITHUB_REPOSITORY"]
+          tag  = os.environ["GITHUB_REF_NAME"]
+          ver  = os.environ.get("VERSION", tag.lstrip("v"))
+          token= os.environ["GH_TOKEN"]
+          asset= os.environ.get("ASSET", "tencent_face_recognition.zip")
+          body = open("changelog.md", encoding="utf-8").read()
+
+          def req(method, url, data=None, raw=False, extra=None):
+              r = urllib.request.Request(url, method=method, data=data)
+              r.add_header("Authorization", f"Bearer {token}")
+              r.add_header("Accept", "application/vnd.github+json")
+              if extra: [r.add_header(k, v) for k, v in extra.items()]
+              if data is not None and not raw:
+                  r.add_header("Content-Type", "application/json")
+              return urllib.request.urlopen(r)
+
+          # 1. 创建 release（GitHub 与 Gitea API 均兼容）
+          payload = {"tag_name": tag, "name": f"Release {tag}",
+                     "body": body, "draft": False, "prerelease": False}
+          resp = req("POST", f"{api}/repos/{repo}/releases",
+                     data=json.dumps(payload).encode())
+          rel = json.loads(resp.read().decode())
+          upload_url = rel.get("upload_url", "")
+          upload_url = upload_url.split("{")[0]
+          print("release created:", rel.get("html_url") or rel.get("id"))
+
+          # 2. 上传 zip 资产
+          with open(asset, "rb") as f:
+              data = f.read()
+          q = urllib.parse.urlencode({"name": asset})
+          up = req("POST", f"{upload_url}?{q}", data=data, raw=True,
+                   extra={"Content-Type": "application/zip"})
+          print("asset uploaded:", asset)
+          PY
+
+      - name: Done
+        run: echo "Release ${GITHUB_REF_NAME} 已发布并附带 ${ASSET}"

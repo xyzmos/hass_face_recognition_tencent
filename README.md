@@ -1,79 +1,86 @@
-# 腾讯云人脸识别 Home Assistant 集成
+# 腾讯云人脸识别 · Home Assistant 集成
 
-基于腾讯云人脸识别（IAI）API 的 Home Assistant 自定义集成，主要面向**自动化**场景：抓拍 → 检测/搜索 → 触发自动化。
+[![Validate](https://code.nextrt.com/Hass/tencent_face_recognition/actions/workflows/validate.yml/badge.svg)](https://code.nextrt.com/Hass/tencent_face_recognition/actions)
+[![Release](https://code.nextrt.com/Hass/tencent_face_recognition/actions/workflows/release.yaml/badge.svg)](https://code.nextrt.com/Hass/tencent_face_recognition/releases)
+[![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
+[![hassfest](https://img.shields.io/badge/hassfest-passing-brightgreen)](https://developers.home-assistant.io/)
+
+基于腾讯云人脸识别（IAI）API 的 Home Assistant 自定义集成。**专为自动化场景设计**：摄像头/门铃触发 → 抓拍 → 检测/搜索 → 驱动自动化。
+
+```
+binary_sensor(门铃/人体感应) → camera 抓拍 → face_search / detect_face
+        ↓
+   face_detected 事件 / 通知 / 自动化条件
+```
 
 ## 功能特性
 
-- **人脸搜索** `face_search`：在人员库中匹配人脸，返回候选人并触发识别事件
-- **人脸检测** `detect_face`：检测人脸位置与尺寸
-- **人脸属性** `get_face_attributes`：性别、年龄、表情、颜值、口罩、帽子、遮挡分等
-- **人员管理** `create_person` / `delete_person`：支持摄像头抓拍或图片注册
-- **人脸管理** `create_face` / `delete_face`：为人员补充/删除人脸
-- **传感器**：人员库状态（诊断）+ 每个成员一个传感器，自动增删
-- **多配置**：支持多个腾讯云账号，服务可用 `config_entry_id` 指定
-- **可靠性**：指数退避重试、HTTP 连接池、图片缓存、凭据脱敏
+- 🔍 **人脸搜索** `face_search`：人员库匹配，返回候选人并触发识别事件
+- 📷 **人脸检测** `detect_face`：返回人脸框坐标与尺寸
+- 👤 **人脸属性** `get_face_attributes`：性别、年龄、表情、颜值、口罩、帽子、遮挡分等
+- ➕ **人员管理** `create_person` / `delete_person`：支持摄像头抓拍注册
+- 🖼️ **人脸管理** `create_face` / `delete_face`：为人员补充/删除人脸
+- 📊 **传感器**：人员库状态（诊断）+ 每个成员一个传感器，自动增删
+- 🔁 **多配置**：多腾讯云账号并存，服务用 `config_entry_id` 指定
+- 🛡️ **可靠性**：指数退避重试、HTTP 连接池、图片缓存、凭据脱敏、`allowlist` 安全校验
 
 ## 安装
 
 ### 方式一：HACS（推荐）
 
-> 本仓库遵循 HACS `custom_components/<domain>` 标准布局。
+> 本仓库遵循 HACS `custom_components/<domain>` 标准布局，发布包含 zip 资产。
 
-1. HACS → 右上角 **⋮** → **Custom repositories**
-2. 仓库地址填 `https://code.nextrt.com/Hass/tencent_face_recognition`，类型选 **Integration**，点 **Add**
-3. 在 HACS 中找到「腾讯云人脸识别」，点 **Download**
+1. 打开 **HACS** → 右上角 **⋮** → **Custom repositories**
+2. 仓库地址：`https://code.nextrt.com/Hass/tencent_face_recognition`，类型选 **Integration** → **Add**
+3. 找到「腾讯云人脸识别」→ **Download**
 4. 重启 Home Assistant
 
 ### 方式二：手动安装
 
-1. 将本仓库 `custom_components/tencent_face_recognition` 目录复制到 HA 的 `config/custom_components/` 下
+1. 将 `custom_components/tencent_face_recognition` 复制到 `config/custom_components/`
 2. 重启 Home Assistant
 
 ## 配置
 
-1. 「设置」→「设备与服务」→「添加集成」→ 搜索「腾讯云人脸识别」
-2. 填写腾讯云 **Secret ID / Secret Key**，可选区域与默认人员库 ID
+「设置」→「设备与服务」→「添加集成」→ 搜索「腾讯云人脸识别」。
 
 | 参数 | 必需 | 默认 | 说明 |
-|------|------|------|------|
-| Secret ID | 是 | - | 腾讯云 API Secret ID（以 `AKID` 开头） |
-| Secret Key | 是 | - | 腾讯云 API Secret Key |
-| 区域 | 否 | `ap-shanghai` | 服务区域 |
-| 人员库 ID | 否 | `Hass` | 默认人员库 |
-| 刷新间隔 | 否 | `300` 秒 | 人员/状态传感器刷新间隔 |
+|------|:--:|------|------|
+| Secret ID | ✅ | - | 腾讯云 Secret ID（`AKID` 开头） |
+| Secret Key | ✅ | - | 腾讯云 Secret Key |
+| 区域 | - | `ap-shanghai` | 服务区域 |
+| 人员库 ID | - | `Hass` | 默认人员库 |
+| 刷新间隔 | - | `300` 秒 | 传感器刷新间隔 |
 
-凭据失效会自动弹出 **重新认证**；也可在集成「选项」中做**测试连接**与**人员管理**。
+> 凭据失效会自动弹出**重新认证**；集成「选项」里可做**基础设置**、**测试连接**、**人员管理**（增删人员）。
 
-## 服务（Actions）
+## 在自动化中使用
 
-所有服务都支持 `response_variable` 获取结果，统一返回 `success`/`error*` 字段及 `request_id`（排障用）。
-
-通用图片参数（按优先级取第一个有效）：`camera_entity_id`（摄像头，优先）> `image_url` > `image_path` > `image_file`（Base64）。`group_id` 在多数服务中可省略，缺省使用配置项默认人员库。
-
-> `image_path` 须位于 `configuration.yaml` 的 `allowlist_external_dirs` 允许目录内（如 `/config/www`），否则会被拒绝读取。
-
-### 人脸搜索 `face_search`
-
-| 参数 | 默认 | 说明 |
-|------|------|------|
-| `group_id` | 默认人员库 | 目标人员库 ID |
-| `max_face_num` | 1 | 最多人脸数 1–10 |
-| `min_face_size` | 34 | 最小人脸（20–4096 像素） |
-| `max_user_num` | 5 | 返回人数 1–100 |
-| `quality_control` | 1 | 质量控制 0–4 |
-| `need_rotate_check` | 1 | 旋转检查 0/1 |
-| `face_match_threshold` | 60.0 | 匹配阈值 0–100 |
+### 触发人脸搜索
 
 ```yaml
-action: tencent_face_recognition.face_search
-response_variable: r
-data:
-  camera_entity_id: camera.doorbell
-  max_face_num: 5
-  face_match_threshold: 70
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.doorbell   # 门铃/人体感应
+    to: "on"
+actions:
+  - action: tencent_face_recognition.face_search
+    response_variable: r
+    data:
+      camera_entity_id: camera.doorbell
+      max_face_num: 5
+      face_match_threshold: 70
+  - choose:
+      - conditions: "{{ r.faces | length > 0 and r.faces[0].candidates | length > 0 }}"
+        sequence:
+          - action: notify.notify
+            data:
+              message: "识别到 {{ r.faces[0].candidates[0].person_name }}（{{ r.faces[0].candidates[0].score }}%）"
 ```
 
-识别到人员时触发事件 **`tencent_face_recognition_face_detected`**（兼容旧事件 `face_detected`）：
+### 识别事件
+
+`face_search` 命中人员时触发事件 **`tencent_face_recognition_face_detected`**（兼容旧 `face_detected`），可直接作为触发器：
 
 ```yaml
 triggers:
@@ -82,52 +89,64 @@ triggers:
 actions:
   - action: notify.notify
     data:
-      message: "识别到 {{ trigger.event.data.person_name }}（{{ trigger.event.data.score }}%）"
+      message: "{{ trigger.event.data.person_name }} 到家了"
 ```
 
-### 人脸检测 `detect_face`
+事件数据：`person_id`、`person_name`、`score`、`face_id`、`gender`、`group_id`、`camera_entity_id`。
 
-返回人脸框 `x/y/width/height`、`image_width/height`、`face_model_version`。
+## 服务（Actions）
 
-### 获取人脸属性 `get_face_attributes`
+所有服务支持 `response_variable` 取结果，统一返回 `success`/`error*`/`request_id` 等字段。
 
-返回 `gender/age/expression/beauty/glass/pitch/yaw/roll/eye_open/mask/hat` 及质量分 `quality_score/brightness/sharpness/completeness`。
+通用图片参数（取第一个有效）：`camera_entity_id`（摄像头）> `image_url` > `image_path` > `image_file`（Base64）。`group_id` 多数服务可省略（用默认人员库）。
 
-### 创建人员 `create_person`
+> `image_path` 须位于 `configuration.yaml` 的 `allowlist_external_dirs` 内（如 `/config/www`）。
 
-`person_id`/`person_name` 必填，`group_id` 可省。可选 `gender`（0女/1男/2未知）、`person_tag`、`unique_person_control`（0–4 同人查重）。建议同时提供图片来源以注册人脸。
+| 服务 | 说明 | 关键参数 |
+|------|------|----------|
+| `face_search` | 人员库匹配 | `group_id` `max_face_num` `min_face_size` `max_user_num` `quality_control` `need_rotate_check` `face_match_threshold` |
+| `detect_face` | 检测人脸位置 | `max_face_num` `min_face_size` `need_rotate_check` |
+| `get_face_attributes` | 人脸属性 | `max_face_num` `need_rotate_check` |
+| `create_person` | 建人员 | `person_id`* `person_name`* `group_id` `gender` `person_tag` `unique_person_control` |
+| `create_face` | 给人加人脸 | `person_id`* `quality_control` `face_match_threshold` |
+| `delete_person` | 删人员 | `person_id`* |
+| `delete_face` | 删人脸 | `person_id`* `face_id`* |
 
-### 注册人脸 `create_face`
+`*` 必填。
 
-`person_id` 必填 + 任一图片来源。可选 `face_match_threshold`（同人校验阈值，默认 60）。
-
-### 删除人员 / 删除人脸
-
-`delete_person`（`person_id`）与 `delete_face`（`person_id` + `face_id`）。
+`create_person` 建议同时给图片；`create_face` 的 `face_match_threshold` 用于同人校验（默认 60）。
 
 ## 传感器
 
 | 实体 | 说明 |
 |------|------|
-| `状态`（诊断） | 已连接 / 未连接 / 连接错误，属性含人员数、模型版本、库信息 |
-| `人员 xxx` | 每个人员一个传感器，状态=姓名，属性含 `face_ids`、性别等 |
+| `状态`（诊断） | 已连接/未连接/连接错误，属性含人员数、模型版本、库信息 |
+| `人员 xxx` | 每人一个，状态=姓名，属性含 `face_ids`、性别等 |
 
-人员库成员变化时，传感器随协调器自动增删。
+人员库变化时传感器自动增删。
 
 ## 蓝图（Blueprint）
 
-仓库内 `blueprints/automation/face_detection_automation.yaml` 为示例蓝图。HACS 安装不会自动导入蓝图，请手动：设置 → 自动化 → 蓝图 → **导入蓝图**，粘贴该文件 URL，或把文件复制到 `config/blueprints/automation/` 后重启。
+`blueprints/automation/face_detection_automation.yaml`：触发实体（binary_sensor）→ 抓拍 → 检测/搜索 → 通知。
+
+**导入方式**（HACS 不自动装蓝图）：设置 → 自动化 → 蓝图 → **导入蓝图**，粘贴该文件 URL；或把文件复制到 `config/blueprints/automation/` 后重启。
+
+## 发布新版本（维护者）
+
+1. 改 `custom_components/tencent_face_recognition/manifest.json` 的 `version`
+2. `git tag vX.Y.Z && git push origin vX.Y.Z`
+3. `release.yaml` 自动：校验版本一致性 → 打包 zip → 创建 release 并上传 `tencent_face_recognition.zip`（HACS 用）
 
 ## 故障排除
 
 | 问题 | 处理 |
 |------|------|
-| 认证失败 | 检查 Secret ID/Key（AKID 开头），或欠费/停用 |
-| 图片失败 | 路径可访问、格式 JPG/PNG/BMP/GIF、≤10MB |
+| 认证失败 | 检查 Secret ID/Key（`AKID` 开头）、是否欠费/停用 |
+| 图片失败 | 路径可访问且在 `allowlist_external_dirs` 内；JPG/PNG/BMP/GIF、≤10MB |
 | 无人脸 | 图片需含清晰人脸，人脸 ≥ 最小尺寸 |
-| 限流 | 已内置退避重试；可降低调用频率或升级套餐 |
+| 限流 | 已内置退避重试；降低频率或升级套餐 |
 
-开发者工具 → 日志，开启 `custom_components.tencent_face_recognition` 的 debug 可获详细日志。
+开发者工具 → 日志，开启 `custom_components.tencent_face_recognition` 的 debug 可获详细日志。集成页可「下载诊断」（凭据已脱敏）。
 
 ## 文档参考
 
@@ -137,4 +156,4 @@ actions:
 
 ## 许可证
 
-MIT License，见 [LICENSE](LICENSE)。
+[MIT License](LICENSE)

@@ -2,5 +2,7 @@
   "name": "腾讯云人脸识别 (Tencent Face Recognition)",
   "content_in_root": false,
   "country": ["CN"],
-  "homeassistant": "2025.1.0"
+  "homeassistant": "2025.1.0",
+  "zip_release": true,
+  "filename": "tencent_face_recognition.zip"
 }
