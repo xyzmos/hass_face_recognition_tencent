@@ -2,6 +2,7 @@
 
 DOMAIN = "tencent_face_recognition"
 PLATFORMS = ["sensor"]
+MANUFACTURER = "Tencent Cloud"
 
 CONF_SECRET_ID = "secret_id"
 CONF_SECRET_KEY = "secret_key"
@@ -12,12 +13,15 @@ CONF_SCAN_INTERVAL = "scan_interval"
 DEFAULT_REGION = "ap-shanghai"
 DEFAULT_PERSON_GROUP_ID = "Hass"
 DEFAULT_MAX_FACE_NUM = 1
+# 腾讯云 IAI 文档：人脸最小尺寸下限为 20 像素，常用默认 34
 DEFAULT_MIN_FACE_SIZE = 34
 DEFAULT_MAX_USER_NUM = 5
 DEFAULT_QUALITY_CONTROL = 1
 DEFAULT_NEED_ROTATE_CHECK = 1
 DEFAULT_FACE_MATCH_THRESHOLD = 60.0
 DEFAULT_SCAN_INTERVAL = 300  # seconds (5 minutes)
+MIN_SCAN_INTERVAL = 30
+MAX_SCAN_INTERVAL = 86400
 
 SERVICE_FACE_SEARCH = "face_search"
 SERVICE_DETECT_FACE = "detect_face"
@@ -45,22 +49,13 @@ ATTR_GENDER = "gender"
 ATTR_FACE_ID = "face_id"
 ATTR_PERSON_TAG = "person_tag"
 
-EVENT_FACE_DETECTED = "face_detected"
+# 事件类型带域名前缀，避免与其它集成冲突；同时保留原事件名做兼容
+EVENT_FACE_DETECTED = f"{DOMAIN}_face_detected"
+EVENT_FACE_DETECTED_LEGACY = "face_detected"
 
 # Sensor identifiers
 SENSOR_STATUS = "status"
 SENSOR_PERSON = "person"
-
-ERROR_INVALID_CONFIG = "无效的配置"
-ERROR_API_ERROR = "API调用错误"
-ERROR_IMAGE_NOT_FOUND = "图片未找到"
-ERROR_FACE_NOT_DETECTED = "未检测到人脸"
-
-STATE_CONNECTED = "已连接"
-STATE_DISCONNECTED = "未连接"
-STATE_CONNECTING = "连接中"
-STATE_ERROR = "连接错误"
-STATE_PARTIALLY_CONNECTED = "部分连接"
 
 
 def get_entry_value(entry, key, default=None):

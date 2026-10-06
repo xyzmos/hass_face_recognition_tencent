@@ -1,0 +1,380 @@
+{
+  "title": "腾讯云人脸识别",
+  "config": {
+    "step": {
+      "user": {
+        "title": "腾讯云人脸识别",
+        "description": "请输入腾讯云人脸识别服务的 API 凭据",
+        "data": {
+          "secret_id": "Secret ID",
+          "secret_key": "Secret Key",
+          "region": "区域",
+          "person_group_id": "人员库 ID",
+          "name": "名称",
+          "scan_interval": "传感器刷新间隔（秒）"
+        },
+        "data_description": {
+          "secret_id": "腾讯云 API 的 Secret ID，以 AKID 开头",
+          "secret_key": "腾讯云 API 的 Secret Key",
+          "region": "腾讯云服务区域，例如 ap-shanghai",
+          "person_group_id": "用于存储和搜索人脸的人员库 ID",
+          "name": "集成显示名称",
+          "scan_interval": "人员/状态传感器的刷新间隔"
+        }
+      },
+      "reauth_confirm": {
+        "title": "重新认证",
+        "description": "凭据失效，请更新腾讯云 API 凭据（当前 Secret ID: {secret_id_hint}）",
+        "data": {
+          "secret_id": "Secret ID",
+          "secret_key": "Secret Key"
+        },
+        "data_description": {
+          "secret_id": "新的 Secret ID",
+          "secret_key": "新的 Secret Key"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "认证失败，请检查 Secret ID 和 Secret Key",
+      "cannot_connect": "无法连接腾讯云，请检查网络与区域设置",
+      "rate_limited": "API 调用频率过高，请稍后再试",
+      "unknown": "发生未知错误",
+      "invalid_secret_id": "Secret ID 格式不正确，应以 AKID 开头",
+      "invalid_secret_key": "Secret Key 格式不正确",
+      "invalid_region": "无效的区域",
+      "invalid_person_group_id": "人员库 ID 只能包含字母、数字、连字符和下划线（1-64 位）"
+    },
+    "abort": {
+      "already_configured": "该 Secret ID 已配置过腾讯云人脸识别服务",
+      "reauth_successful": "重新认证成功"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "腾讯云人脸识别选项",
+        "menu_options": {
+          "settings": "基础设置",
+          "test_connection": "测试连接",
+          "manage": "人员管理"
+        }
+      },
+      "settings": {
+        "title": "基础设置",
+        "description": "修改区域、默认人员库与传感器刷新间隔",
+        "data": {
+          "region": "区域",
+          "person_group_id": "默认人员库 ID",
+          "scan_interval": "传感器刷新间隔（秒）"
+        },
+        "data_description": {
+          "region": "腾讯云服务区域",
+          "person_group_id": "服务默认使用的人员库 ID",
+          "scan_interval": "人员/状态传感器刷新间隔"
+        }
+      },
+      "test_connection": {
+        "title": "测试连接",
+        "description": "腾讯云 API 连接测试\n连接状态: {connection_status}\n\n点击提交返回主菜单。"
+      },
+      "manage": {
+        "title": "人员管理",
+        "description": "人员库 {group_id} 当前共 {person_count} 人",
+        "data": {
+          "person_action": "操作",
+          "selected_person": "选择人员"
+        }
+      },
+      "create_person": {
+        "title": "创建人员",
+        "description": "通过摄像头抓拍创建人员",
+        "data": {
+          "person_id": "人员 ID",
+          "person_name": "人员名称",
+          "camera_entity": "摄像头实体"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "认证失败，请检查 Secret ID 和 Secret Key",
+      "cannot_connect": "无法连接腾讯云，请检查网络与区域设置",
+      "rate_limited": "API 调用频率过高，请稍后再试",
+      "unknown": "发生未知错误",
+      "invalid_person_group_id": "人员库 ID 只能包含字母、数字、连字符和下划线（1-64 位）",
+      "invalid_person_id": "人员 ID 格式不正确",
+      "select_person_required": "请先选择要删除的人员",
+      "create_failed": "创建人员失败，请查看日志"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status_sensor": {
+        "name": "状态"
+      },
+      "person_sensor": {
+        "name": "人员"
+      }
+    }
+  },
+  "services": {
+    "face_search": {
+      "name": "人脸搜索",
+      "description": "在人员库中搜索人脸，返回匹配的人员信息并触发识别事件",
+      "fields": {
+        "group_id": {
+          "name": "人员库 ID",
+          "description": "要搜索的人员库 ID，缺省用默认人员库"
+        },
+        "image_url": {
+          "name": "图片 URL",
+          "description": "待识别图片的 URL"
+        },
+        "image_path": {
+          "name": "图片路径",
+          "description": "本地图片路径"
+        },
+        "image_file": {
+          "name": "图片文件",
+          "description": "Base64 编码图片"
+        },
+        "camera_entity_id": {
+          "name": "摄像头实体",
+          "description": "从该摄像头抓取图片"
+        },
+        "config_entry_id": {
+          "name": "配置项 ID",
+          "description": "多配置时指定"
+        },
+        "max_face_num": {
+          "name": "最大人脸数",
+          "description": "最多处理的人脸数量"
+        },
+        "min_face_size": {
+          "name": "最小人脸尺寸",
+          "description": "最小人脸尺寸（像素）"
+        },
+        "max_user_num": {
+          "name": "最大返回人数",
+          "description": "最多返回的匹配人员数量"
+        },
+        "quality_control": {
+          "name": "质量控制",
+          "description": "图片质量控制等级 0-4"
+        },
+        "need_rotate_check": {
+          "name": "旋转检查",
+          "description": "是否进行旋转检查（0/1）"
+        },
+        "face_match_threshold": {
+          "name": "匹配阈值",
+          "description": "人脸匹配阈值 0-100"
+        }
+      }
+    },
+    "detect_face": {
+      "name": "人脸检测",
+      "description": "检测图片中的人脸位置和尺寸",
+      "fields": {
+        "image_url": {
+          "name": "图片 URL",
+          "description": "待检测图片的 URL"
+        },
+        "image_path": {
+          "name": "图片路径",
+          "description": "本地图片路径"
+        },
+        "image_file": {
+          "name": "图片文件",
+          "description": "Base64 编码图片"
+        },
+        "camera_entity_id": {
+          "name": "摄像头实体",
+          "description": "从该摄像头抓取图片"
+        },
+        "config_entry_id": {
+          "name": "配置项 ID",
+          "description": "多配置时指定"
+        },
+        "max_face_num": {
+          "name": "最大人脸数",
+          "description": "最多检测的人脸数量"
+        },
+        "min_face_size": {
+          "name": "最小人脸尺寸",
+          "description": "最小人脸尺寸（像素）"
+        },
+        "need_rotate_check": {
+          "name": "旋转检查",
+          "description": "是否进行旋转检查（0/1）"
+        }
+      }
+    },
+    "get_face_attributes": {
+      "name": "获取人脸属性",
+      "description": "获取图片中人脸的性别、年龄、表情等属性",
+      "fields": {
+        "image_url": {
+          "name": "图片 URL",
+          "description": "待分析图片的 URL"
+        },
+        "image_path": {
+          "name": "图片路径",
+          "description": "本地图片路径"
+        },
+        "image_file": {
+          "name": "图片文件",
+          "description": "Base64 编码图片"
+        },
+        "camera_entity_id": {
+          "name": "摄像头实体",
+          "description": "从该摄像头抓取图片"
+        },
+        "config_entry_id": {
+          "name": "配置项 ID",
+          "description": "多配置时指定"
+        },
+        "max_face_num": {
+          "name": "最大人脸数",
+          "description": "最多分析的人脸数量"
+        },
+        "need_rotate_check": {
+          "name": "旋转检查",
+          "description": "是否进行旋转检查（0/1）"
+        }
+      }
+    },
+    "create_person": {
+      "name": "创建人员",
+      "description": "在人员库中创建新人员",
+      "fields": {
+        "person_id": {
+          "name": "人员 ID",
+          "description": "人员唯一标识"
+        },
+        "person_name": {
+          "name": "人员名称",
+          "description": "人员名称"
+        },
+        "group_id": {
+          "name": "人员库 ID",
+          "description": "目标人员库 ID，缺省用默认人员库"
+        },
+        "image_url": {
+          "name": "图片 URL",
+          "description": "人脸图片 URL"
+        },
+        "image_path": {
+          "name": "图片路径",
+          "description": "本地人脸图片路径"
+        },
+        "image_file": {
+          "name": "图片文件",
+          "description": "Base64 编码人脸图片"
+        },
+        "camera_entity_id": {
+          "name": "摄像头实体",
+          "description": "从该摄像头抓取人脸"
+        },
+        "config_entry_id": {
+          "name": "配置项 ID",
+          "description": "多配置时指定"
+        },
+        "gender": {
+          "name": "性别",
+          "description": "0=女 1=男 2=未知"
+        },
+        "person_tag": {
+          "name": "人员标签",
+          "description": "人员备注标签"
+        },
+        "quality_control": {
+          "name": "质量控制",
+          "description": "图片质量控制等级 0-4"
+        },
+        "need_rotate_check": {
+          "name": "旋转检查",
+          "description": "是否进行旋转检查（0/1）"
+        },
+        "unique_person_control": {
+          "name": "同人查重",
+          "description": "0=不查重 1=查重 2=全局查重 3=全局拒绝 4=自定义"
+        }
+      }
+    },
+    "delete_person": {
+      "name": "删除人员",
+      "description": "从人员库中删除人员",
+      "fields": {
+        "person_id": {
+          "name": "人员 ID",
+          "description": "要删除的人员 ID"
+        },
+        "config_entry_id": {
+          "name": "配置项 ID",
+          "description": "多配置时指定"
+        }
+      }
+    },
+    "create_face": {
+      "name": "注册人脸",
+      "description": "为已有人员添加人脸照片",
+      "fields": {
+        "person_id": {
+          "name": "人员 ID",
+          "description": "目标人员 ID"
+        },
+        "image_url": {
+          "name": "图片 URL",
+          "description": "人脸图片 URL"
+        },
+        "image_path": {
+          "name": "图片路径",
+          "description": "本地人脸图片路径"
+        },
+        "image_file": {
+          "name": "图片文件",
+          "description": "Base64 编码人脸图片"
+        },
+        "camera_entity_id": {
+          "name": "摄像头实体",
+          "description": "从该摄像头抓取人脸"
+        },
+        "config_entry_id": {
+          "name": "配置项 ID",
+          "description": "多配置时指定"
+        },
+        "quality_control": {
+          "name": "质量控制",
+          "description": "图片质量控制等级 0-4"
+        },
+        "need_rotate_check": {
+          "name": "旋转检查",
+          "description": "是否进行旋转检查（0/1）"
+        },
+        "face_match_threshold": {
+          "name": "匹配阈值",
+          "description": "同人校验阈值 0-100"
+        }
+      }
+    },
+    "delete_face": {
+      "name": "删除人脸",
+      "description": "删除指定人员的人脸",
+      "fields": {
+        "person_id": {
+          "name": "人员 ID",
+          "description": "人员 ID"
+        },
+        "face_id": {
+          "name": "人脸 ID",
+          "description": "要删除的人脸 ID"
+        },
+        "config_entry_id": {
+          "name": "配置项 ID",
+          "description": "多配置时指定"
+        }
+      }
+    }
+  }
+}

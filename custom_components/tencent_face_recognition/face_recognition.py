@@ -7,23 +7,6 @@ from typing import Dict, Any, List, Optional
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 
-from .const import (
-    ATTR_IMAGE_URL,
-    ATTR_IMAGE_PATH,
-    ATTR_CAMERA_ENTITY_ID,
-    ATTR_MAX_FACE_NUM,
-    ATTR_MIN_FACE_SIZE,
-    ATTR_MAX_USER_NUM,
-    ATTR_QUALITY_CONTROL,
-    ATTR_NEED_ROTATE_CHECK,
-    ATTR_FACE_MATCH_THRESHOLD,
-    ATTR_PERSON_ID,
-    ATTR_PERSON_NAME,
-    ATTR_GENDER,
-    ATTR_FACE_ID,
-    ATTR_PERSON_TAG,
-    ATTR_GROUP_ID,
-)
 from .tencent_cloud_client import TencentCloudClient
 
 _LOGGER = logging.getLogger(__name__)
@@ -45,6 +28,11 @@ class FaceRecognition:
     ) -> str:
         if camera_entity_id:
             return await self._get_camera_image_base64(camera_entity_id)
+        # 本地路径需位于 allowlist_external_dirs，避免任意文件读取
+        if image_path and not self.hass.config.is_allowed_path(image_path):
+            raise HomeAssistantError(
+                f"图片路径不在 allowlist_external_dirs 允许范围内: {image_path}"
+            )
         if image_url or image_path or image_file:
             return await self.hass.async_add_executor_job(
                 self.client._get_image_base64,
@@ -241,6 +229,7 @@ class FaceRecognition:
         person_tag: Optional[str] = None,
         quality_control: int = 1,
         need_rotate_check: int = 1,
+        unique_person_control: Optional[int] = None,
     ) -> Dict[str, Any]:
         image_base64 = None
         if any([image_url, image_path, image_file, camera_entity_id]):
@@ -262,6 +251,7 @@ class FaceRecognition:
             person_tag=person_tag,
             quality_control=quality_control,
             need_rotate_check=need_rotate_check,
+            unique_person_control=unique_person_control,
         )
 
     async def async_delete_person(self, person_id: str) -> Dict[str, Any]:
@@ -280,6 +270,7 @@ class FaceRecognition:
         camera_entity_id: Optional[str] = None,
         quality_control: int = 1,
         need_rotate_check: int = 1,
+        face_match_threshold: Optional[float] = None,
     ) -> Dict[str, Any]:
         image_base64 = await self._get_image_base64_from_source(
             image_url=image_url,
@@ -295,6 +286,7 @@ class FaceRecognition:
             image_base64=image_base64,
             quality_control=quality_control,
             need_rotate_check=need_rotate_check,
+            face_match_threshold=face_match_threshold,
         )
 
     async def async_delete_face(self, person_id: str, face_id: str) -> Dict[str, Any]:

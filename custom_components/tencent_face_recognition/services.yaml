@@ -1,0 +1,371 @@
+face_search:
+  fields:
+    group_id:
+      required: false
+      example: "Hass"
+      selector:
+        text:
+    image_url:
+      required: false
+      example: "https://example.com/image.jpg"
+      selector:
+        text:
+    image_path:
+      required: false
+      example: "/config/www/image.jpg"
+      selector:
+        text:
+    image_file:
+      required: false
+      selector:
+        text:
+    camera_entity_id:
+      required: false
+      example: "camera.front_door"
+      selector:
+        entity:
+          filter:
+            domain: camera
+    config_entry_id:
+      required: false
+      selector:
+        text:
+    max_face_num:
+      required: false
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 10
+          step: 1
+          mode: box
+    min_face_size:
+      required: false
+      default: 34
+      selector:
+        number:
+          min: 20
+          max: 4096
+          step: 1
+          mode: box
+    max_user_num:
+      required: false
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          mode: box
+    quality_control:
+      required: false
+      default: 1
+      selector:
+        number:
+          min: 0
+          max: 4
+          step: 1
+          mode: box
+    need_rotate_check:
+      required: false
+      default: 1
+      selector:
+        select:
+          options:
+            - label: "否"
+              value: "0"
+            - label: "是"
+              value: "1"
+    face_match_threshold:
+      required: false
+      default: 60.0
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          mode: box
+
+detect_face:
+  fields:
+    image_url:
+      required: false
+      example: "https://example.com/image.jpg"
+      selector:
+        text:
+    image_path:
+      required: false
+      example: "/config/www/image.jpg"
+      selector:
+        text:
+    image_file:
+      required: false
+      selector:
+        text:
+    camera_entity_id:
+      required: false
+      example: "camera.front_door"
+      selector:
+        entity:
+          filter:
+            domain: camera
+    config_entry_id:
+      required: false
+      selector:
+        text:
+    max_face_num:
+      required: false
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 120
+          step: 1
+          mode: box
+    min_face_size:
+      required: false
+      default: 34
+      selector:
+        number:
+          min: 20
+          max: 4096
+          step: 1
+          mode: box
+    need_rotate_check:
+      required: false
+      default: 1
+      selector:
+        select:
+          options:
+            - label: "否"
+              value: "0"
+            - label: "是"
+              value: "1"
+
+get_face_attributes:
+  fields:
+    image_url:
+      required: false
+      example: "https://example.com/image.jpg"
+      selector:
+        text:
+    image_path:
+      required: false
+      example: "/config/www/image.jpg"
+      selector:
+        text:
+    image_file:
+      required: false
+      selector:
+        text:
+    camera_entity_id:
+      required: false
+      example: "camera.front_door"
+      selector:
+        entity:
+          filter:
+            domain: camera
+    config_entry_id:
+      required: false
+      selector:
+        text:
+    max_face_num:
+      required: false
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 120
+          step: 1
+          mode: box
+    need_rotate_check:
+      required: false
+      default: 1
+      selector:
+        select:
+          options:
+            - label: "否"
+              value: "0"
+            - label: "是"
+              value: "1"
+
+create_person:
+  fields:
+    person_id:
+      required: true
+      example: "person_001"
+      selector:
+        text:
+    person_name:
+      required: true
+      example: "张三"
+      selector:
+        text:
+    group_id:
+      required: false
+      example: "Hass"
+      selector:
+        text:
+    image_url:
+      required: false
+      example: "https://example.com/face.jpg"
+      selector:
+        text:
+    image_path:
+      required: false
+      example: "/config/www/face.jpg"
+      selector:
+        text:
+    image_file:
+      required: false
+      selector:
+        text:
+    camera_entity_id:
+      required: false
+      example: "camera.front_door"
+      selector:
+        entity:
+          filter:
+            domain: camera
+    config_entry_id:
+      required: false
+      selector:
+        text:
+    gender:
+      required: false
+      selector:
+        select:
+          options:
+            - label: "女"
+              value: "0"
+            - label: "男"
+              value: "1"
+            - label: "未知"
+              value: "2"
+    person_tag:
+      required: false
+      selector:
+        text:
+    quality_control:
+      required: false
+      default: 1
+      selector:
+        number:
+          min: 0
+          max: 4
+          step: 1
+          mode: box
+    need_rotate_check:
+      required: false
+      default: 1
+      selector:
+        select:
+          options:
+            - label: "否"
+              value: "0"
+            - label: "是"
+              value: "1"
+    unique_person_control:
+      required: false
+      selector:
+        select:
+          options:
+            - label: "不查重"
+              value: "0"
+            - label: "查重"
+              value: "1"
+            - label: "全局查重"
+              value: "2"
+            - label: "全局拒绝"
+              value: "3"
+            - label: "自定义"
+              value: "4"
+
+delete_person:
+  fields:
+    person_id:
+      required: true
+      example: "person_001"
+      selector:
+        text:
+    config_entry_id:
+      required: false
+      selector:
+        text:
+
+create_face:
+  fields:
+    person_id:
+      required: true
+      example: "person_001"
+      selector:
+        text:
+    image_url:
+      required: false
+      example: "https://example.com/face.jpg"
+      selector:
+        text:
+    image_path:
+      required: false
+      example: "/config/www/face.jpg"
+      selector:
+        text:
+    image_file:
+      required: false
+      selector:
+        text:
+    camera_entity_id:
+      required: false
+      example: "camera.front_door"
+      selector:
+        entity:
+          filter:
+            domain: camera
+    config_entry_id:
+      required: false
+      selector:
+        text:
+    quality_control:
+      required: false
+      default: 1
+      selector:
+        number:
+          min: 0
+          max: 4
+          step: 1
+          mode: box
+    need_rotate_check:
+      required: false
+      default: 1
+      selector:
+        select:
+          options:
+            - label: "否"
+              value: "0"
+            - label: "是"
+              value: "1"
+    face_match_threshold:
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          mode: box
+
+delete_face:
+  fields:
+    person_id:
+      required: true
+      example: "person_001"
+      selector:
+        text:
+    face_id:
+      required: true
+      example: "3440118425101275818"
+      selector:
+        text:
+    config_entry_id:
+      required: false
+      selector:
+        text:

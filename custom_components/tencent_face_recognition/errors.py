@@ -46,6 +46,10 @@ ERROR_MESSAGES = {
 
         "unknown_error": "未知错误: {message}",
         "invalid_parameter": "无效参数: {parameter}",
+        "person_exist_in_group": "人员已存在: {code}",
+        "group_exist_in_group": "人员库已存在: {code}",
+        "delete_face_num_exceed": "删除人脸数量超出限制，人员至少需保留一张人脸",
+        "resource_unavailable": "服务不可用: {code}",
     },
     "en_US": {
         "missing_config": "Missing required configuration: {key}",
@@ -83,6 +87,10 @@ ERROR_MESSAGES = {
 
         "unknown_error": "Unknown error: {message}",
         "invalid_parameter": "Invalid parameter: {parameter}",
+        "person_exist_in_group": "Person already exists: {code}",
+        "group_exist_in_group": "Group already exists: {code}",
+        "delete_face_num_exceed": "Delete face count exceeded; a person must keep at least one face",
+        "resource_unavailable": "Service unavailable: {code}",
     }
 }
 
@@ -262,21 +270,47 @@ def handle_api_error(error_code: str, error_message: str) -> None:
 
     先尝试精确匹配，再用前缀匹配，最后回退到通用 ``ApiError``。
     """
+    # 真实错误码映射（腾讯云 IAI 文档 32808），key = code
     error_mapping = {
-        "FailedOperation.ImageDecodeFailed": (ImageNotFoundError, "image_decode_failed"),
-        "FailedOperation.ImageSizeTooLarge": (ImageNotFoundError, "image_too_large"),
-        "InvalidParameterValue.NoFaceInPhoto": (FaceNotDetectedError, "face_not_detected"),
-        "FailedOperation.NoFaceInPhoto": (FaceNotDetectedError, "face_not_detected"),
-        "FailedOperation.FaceSizeTooSmall": (FaceNotDetectedError, "face_too_small"),
-        "FailedOperation.PersonNotFound": (PersonNotFoundError, "person_not_found"),
-        "FailedOperation.GroupNotFound": (PersonGroupNotFoundError, "group_not_found"),
-        "FailedOperation.FaceNotFound": (FaceNotFoundError, "face_not_found"),
-        "FailedOperation.ConflictInstance": (ApiError, "invalid_parameter"),
+        # 认证 / 签名
         "AuthFailure.SignatureFailure": (AuthenticationError, "auth_failure"),
         "AuthFailure.SecretIdNotFound": (AuthenticationError, "auth_failure"),
+        "AuthFailure.InvalidAuthorization": (AuthenticationError, "auth_failure"),
+        # 图片相关
+        "FailedOperation.ImageDecodeFailed": (ImageNotFoundError, "image_decode_failed"),
+        "FailedOperation.ImageSizeExceed": (ImageNotFoundError, "image_too_large"),
+        "FailedOperation.ImageResolutionExceed": (ImageNotFoundError, "image_too_large"),
+        "FailedOperation.ImageResolutionTooSmall": (ImageNotFoundError, "face_too_small"),
+        "FailedOperation.ImageDownloadError": (NetworkError, "image_download_error"),
+        # 人脸检测
+        "InvalidParameterValue.NoFaceInPhoto": (FaceNotDetectedError, "face_not_detected"),
+        "FailedOperation.FaceSizeTooSmall": (FaceNotDetectedError, "face_too_small"),
+        "FailedOperation.FaceQualityNotQualified": (FaceNotDetectedError, "face_quality_poor"),
+        # 人员 / 人员库 / 人脸
+        "InvalidParameterValue.PersonIdNotExist": (PersonNotFoundError, "person_not_found"),
+        "ResourceNotFound.ErrorPersonNotExisted": (PersonNotFoundError, "person_not_found"),
+        "InvalidParameterValue.PersonExistInGroup": (ApiError, "person_exist_in_group"),
+        "InvalidParameterValue.PersonIdAlreadyExist": (ApiError, "person_exist_in_group"),
+        "InvalidParameterValue.GroupIdNotExist": (PersonGroupNotFoundError, "group_not_found"),
+        "InvalidParameterValue.GroupIdAlreadyExist": (ApiError, "group_exist_in_group"),
+        "FailedOperation.GroupPersonMapNotExist": (FaceNotFoundError, "face_not_found"),
+        "FailedOperation.DeleteFaceNumExceed": (ApiError, "delete_face_num_exceed"),
+        # 配额 / 限流 / 计费
         "RequestLimitExceeded": (RateLimitError, "rate_limit_exceeded"),
-        "RequestQuotaExceeded": (QuotaExceededError, "quota_exceeded"),
-        "ResourceUnavailable.NetworkError": (NetworkError, "network_error"),
+        "FailedOperation.RequestLimitExceeded": (RateLimitError, "rate_limit_exceeded"),
+        "LimitExceeded.ErrorFaceNumExceed": (QuotaExceededError, "quota_exceeded"),
+        "ResourceUnavailable.InArrears": (QuotaExceededError, "quota_exceeded"),
+        "ResourceUnavailable.LowBalance": (QuotaExceededError, "quota_exceeded"),
+        "ResourceUnavailable.Freeze": (ApiError, "resource_unavailable"),
+        "ResourceUnavailable.StopUsing": (ApiError, "resource_unavailable"),
+        # 网络 / 服务
+        "FailedOperation.RequestTimeout": (NetworkError, "timeout_error"),
+        "FailedOperation.ServerError": (NetworkError, "network_error"),
+        "FailedOperation.ConflictOperation": (ApiError, "api_error"),
+        "FailedOperation.CreateFaceConcurrent": (ApiError, "api_error"),
+        "InternalError": (NetworkError, "network_error"),
+        "MissingParameter.ErrorParameterEmpty": (ApiError, "invalid_parameter"),
+        "UnsupportedOperation.UnknowMethod": (ApiError, "invalid_parameter"),
     }
 
     error_class = None
@@ -285,21 +319,24 @@ def handle_api_error(error_code: str, error_message: str) -> None:
     if error_code in error_mapping:
         error_class, error_key = error_mapping[error_code]
     else:
-        for prefix in ("AuthFailure", "InvalidParameter", "ResourceNotFound",
-                       "LimitExceeded", "FailedOperation"):
-            if error_code.startswith(prefix):
-                _LOGGER.debug("按前缀匹配错误码: %s -> %s", error_code, prefix)
-                if prefix == "AuthFailure":
-                    error_class, error_key = AuthenticationError, "auth_failure"
-                elif prefix == "InvalidParameter":
-                    error_class, error_key = ApiError, "invalid_parameter"
-                elif prefix == "ResourceNotFound":
-                    error_class, error_key = ApiError, "api_error"
-                elif prefix == "LimitExceeded":
-                    error_class, error_key = RateLimitError, "rate_limit_exceeded"
-                else:
-                    error_class, error_key = ApiError, "api_error"
-                break
+        # 前缀兜底
+        if error_code.startswith("AuthFailure"):
+            error_class, error_key = AuthenticationError, "auth_failure"
+        elif error_code.startswith("InvalidParameterValue.PersonId"):
+            error_class, error_key = ApiError, "invalid_parameter"
+        elif error_code.startswith("InvalidParameterValue.GroupId"):
+            error_class, error_key = ApiError, "invalid_parameter"
+        elif error_code.startswith("InvalidParameter") or error_code.startswith("MissingParameter"):
+            error_class, error_key = ApiError, "invalid_parameter"
+        elif error_code.startswith("ResourceNotFound"):
+            error_class, error_key = ApiError, "api_error"
+        elif error_code.startswith("LimitExceeded"):
+            error_class, error_key = RateLimitError, "rate_limit_exceeded"
+        elif error_code.startswith("RequestLimitExceeded"):
+            error_class, error_key = RateLimitError, "rate_limit_exceeded"
+        else:
+            error_class, error_key = ApiError, "api_error"
+        _LOGGER.debug("按前缀匹配错误码: %s -> %s/%s", error_code, error_class.__name__, error_key)
 
     if error_class is None:
         error_class, error_key = ApiError, "api_error"

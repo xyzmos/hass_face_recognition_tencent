@@ -1,0 +1,6 @@
+{
+  "name": "腾讯云人脸识别 (Tencent Face Recognition)",
+  "content_in_root": false,
+  "country": ["CN"],
+  "homeassistant": "2025.1.0"
+}

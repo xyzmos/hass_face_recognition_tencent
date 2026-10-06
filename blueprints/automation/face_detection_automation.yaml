@@ -1,0 +1,114 @@
+blueprint:
+  name: 腾讯云人脸检测自动化
+  description: 当触发实体（如门铃/人体感应 binary_sensor）触发时，抓取摄像头画面做腾讯云人脸检测/搜索，并按结果通知。
+  domain: automation
+  homeassistant:
+    min_version: 2025.1.0
+  input:
+    trigger_entity:
+      name: 触发实体
+      description: 触发抓拍的实体（通常为 binary_sensor，如门铃、人体感应）。
+      selector:
+        entity:
+          filter:
+            domain: binary_sensor
+    camera_entity:
+      name: 摄像头
+      description: 用于抓拍的摄像头实体。
+      selector:
+        entity:
+          filter:
+            domain: camera
+    action_type:
+      name: 执行动作
+      description: 检测到人脸后执行的操作。
+      default: "search"
+      selector:
+        select:
+          options:
+            - label: "仅检测人脸"
+              value: "detect"
+            - label: "搜索人脸（人员库匹配）"
+              value: "search"
+    person_group_id:
+      name: 人员库 ID
+      description: 人脸搜索使用的人员库（仅搜索模式），缺省用默认人员库。
+      default: "Hass"
+      selector:
+        text:
+    max_face_num:
+      name: 最大人脸数
+      description: 最多处理的人脸数量。
+      default: 3
+      selector:
+        number:
+          min: 1
+          max: 10
+          mode: slider
+    notify_known:
+      name: 已知人员通知
+      description: 匹配到已知人员时发送通知。
+      default: true
+      selector:
+        boolean:
+
+trigger_variables:
+  camera: !input camera_entity
+  action_type: !input action_type
+  group: !input person_group_id
+  max_faces: !input max_face_num
+  notify: !input notify_known
+
+trigger:
+  - platform: state
+    entity_id: !input trigger_entity
+    to: "on"
+
+action:
+  - alias: "执行检测或搜索"
+    choose:
+      - conditions: "{{ action_type == 'detect' }}"
+        sequence:
+          - action: tencent_face_recognition.detect_face
+            data:
+              camera_entity_id: "{{ camera }}"
+              max_face_num: "{{ max_faces | int }}"
+            response_variable: result
+      - conditions: "{{ action_type == 'search' }}"
+        sequence:
+          - action: tencent_face_recognition.face_search
+            data:
+              camera_entity_id: "{{ camera }}"
+              group_id: "{{ group }}"
+              max_face_num: "{{ max_faces | int }}"
+            response_variable: result
+
+  - alias: "处理识别结果"
+    if:
+      - condition: template
+        value_template: "{{ result is defined and result.get('success', false) and result.get('faces', []) | length > 0 }}"
+    then:
+      - choose:
+          - conditions: "{{ action_type == 'search' and result.faces[0].candidates | length > 0 }}"
+            sequence:
+              - event: tencent_face_recognition_face_detected
+                event_data:
+                  person_id: "{{ result.faces[0].candidates[0].person_id }}"
+                  person_name: "{{ result.faces[0].candidates[0].person_name }}"
+                  score: "{{ result.faces[0].candidates[0].score }}"
+                  camera_entity_id: "{{ camera }}"
+              - if:
+                  - condition: template
+                    value_template: "{{ notify }}"
+                then:
+                  - action: persistent_notification.create
+                    data:
+                      title: "人脸识别 - 已知人员"
+                      message: "检测到 {{ result.faces[0].candidates[0].person_name }}（匹配度 {{ result.faces[0].candidates[0].score }}%）"
+        default:
+          - event: tencent_face_recognition_face_detected
+            event_data:
+              face_count: "{{ result.faces | length }}"
+              camera_entity_id: "{{ camera }}"
+
+mode: single

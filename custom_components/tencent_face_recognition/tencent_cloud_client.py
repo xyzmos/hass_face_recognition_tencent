@@ -244,6 +244,7 @@ class TencentCloudClient:
         person_tag: Optional[str] = None,
         quality_control: int = 1,
         need_rotate_check: int = 1,
+        unique_person_control: Optional[int] = None,
     ) -> Dict[str, Any]:
         if image_base64 is None and any([image_url, image_path, image_file]):
             image_base64 = self._get_image_base64(image_url, image_path, image_file)
@@ -257,6 +258,7 @@ class TencentCloudClient:
             person_tag=person_tag,
             quality_control=quality_control,
             need_rotate_check=need_rotate_check,
+            unique_person_control=unique_person_control,
             retry_config=self.retry_config,
             sanitize=self._sanitize_error,
         )
@@ -278,6 +280,7 @@ class TencentCloudClient:
         image_base64: Optional[str] = None,
         quality_control: int = 1,
         need_rotate_check: int = 1,
+        face_match_threshold: Optional[float] = None,
     ) -> Dict[str, Any]:
         if image_base64 is None:
             image_base64 = self._get_image_base64(image_url, image_path, image_file)
@@ -287,6 +290,7 @@ class TencentCloudClient:
             image_base64=image_base64,
             quality_control=quality_control,
             need_rotate_check=need_rotate_check,
+            face_match_threshold=face_match_threshold,
             retry_config=self.retry_config,
             sanitize=self._sanitize_error,
         )

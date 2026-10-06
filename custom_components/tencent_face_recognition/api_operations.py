@@ -4,13 +4,13 @@
 删除人员/注册人脸/删除人脸/获取库信息/获取人员列表等）抽离为独立函数，
 由 ``TencentCloudClient`` 委托调用。每个函数返回标准化的结果字典。
 
-腾讯云 IAI SDK (``tencentcloud.iai.v20200303``) 的若干字段名已更新：
-- ``NeedRotateCheck`` 已废弃，使用 ``NeedRotateDetection``。
-- ``CreateFaceRequest`` 使用 ``Images``（列表）而非 ``Image``。
-- ``Candidate`` 没有 ``PersonTag`` 字段（标签在 ``PersonGroupInfos`` 中）。
-- ``FaceInfo`` 的属性位于 ``FaceAttributesInfo`` / ``FaceQualityInfo`` 子结构。
-- ``GetGroupInfoResponse`` 的库标签字段是 ``Tag`` 而非 ``GroupTag``。
-- ``CreateFaceResponse`` 的成功人脸 ID 列表是 ``SucFaceIds`` 而非 ``FaceIds``。
+腾讯云 IAI SDK (``tencentcloud.iai.v20200303``) 关键字段（已按 SDK 模型源码核对）：
+- 旋转检测参数名为 ``NeedRotateDetection``（SDK 中不存在 ``NeedRotateCheck``）。
+- ``CreateFaceRequest`` 使用 ``Images``（列表）；``CreateFaceResponse`` 出参为 ``SucFaceIds``/``SucIndexes``/``SucDeletedNum``。
+- ``DeleteFaceResponse`` 出参为 ``SucDeletedNum``/``SucFaceIds``（无 ``SucIndexes``）。
+- ``CreatePersonResponse`` 出参为 ``FaceId``/``FaceRect``/``SimilarPersonId``/``FaceModelVersion``（无 ``PersonId``/``SucFaceNum``）。
+- ``Candidate`` 无 ``PersonTag`` 字段；``GetGroupInfoResponse`` 库标签字段是 ``Tag``（非 ``GroupTag``）。
+- ``FaceInfo`` 的属性位于 ``FaceAttributesInfo``/``FaceQualityInfo`` 子结构，``FaceQualityInfo`` 含 ``Completeness`` 遮挡分。
 """
 
 from __future__ import annotations
@@ -134,6 +134,9 @@ def _run(
             duration = time.time() - start
             _log_response(operation_name, request_id, resp, duration)
             result = {"success": True}
+            request_id = getattr(resp, "RequestId", None)
+            if request_id:
+                result["request_id"] = request_id
             if success_extra:
                 result.update(success_extra)
             result.update(parse_response(resp))
@@ -191,6 +194,8 @@ def search_faces(
                 "face_id": None,
                 "candidates": [],
                 "face_rect": _face_rect_dict(getattr(result, "FaceRect", None)),
+                # Result.RetCode：0 正常，-1601 质量不达标等
+                "ret_code": getattr(result, "RetCode", 0),
             }
             for candidate in getattr(result, "Candidates", []) or []:
                 face_result["candidates"].append({
@@ -204,7 +209,11 @@ def search_faces(
                     ),
                 })
             results.append(face_result)
-        return {"faces": results, "face_count": len(results)}
+        return {
+            "faces": results,
+            "face_count": getattr(resp, "FaceNum", len(results)),
+            "face_model_version": getattr(resp, "FaceModelVersion", ""),
+        }
 
     return _run(
         client, "人脸搜索", build_request,
@@ -247,7 +256,8 @@ def detect_faces(
             })
         return {"faces": results, "face_count": len(results),
                 "image_width": getattr(resp, "ImageWidth", 0),
-                "image_height": getattr(resp, "ImageHeight", 0)}
+                "image_height": getattr(resp, "ImageHeight", 0),
+                "face_model_version": getattr(resp, "FaceModelVersion", "")}
 
     return _run(
         client, "人脸检测", build_request,
@@ -298,13 +308,19 @@ def get_face_attributes(
                 "yaw": getattr(attrs, "Yaw", None) if attrs else None,
                 "roll": getattr(attrs, "Roll", None) if attrs else None,
                 "eye_open": getattr(attrs, "EyeOpen", None) if attrs else None,
+                "mask": getattr(attrs, "Mask", None) if attrs else None,
+                "hat": getattr(attrs, "Hat", None) if attrs else None,
                 "quality_score": getattr(quality, "Score", None) if quality else None,
                 "quality_brightness": getattr(quality, "Brightness", None) if quality else None,
                 "quality_sharpness": getattr(quality, "Sharpness", None) if quality else None,
+                "quality_completeness": _completeness_dict(
+                    getattr(quality, "Completeness", None) if quality else None
+                ),
             })
         return {"faces": results, "face_count": len(results),
                 "image_width": getattr(resp, "ImageWidth", 0),
-                "image_height": getattr(resp, "ImageHeight", 0)}
+                "image_height": getattr(resp, "ImageHeight", 0),
+                "face_model_version": getattr(resp, "FaceModelVersion", "")}
 
     return _run(
         client, "获取人脸属性", build_request,
@@ -324,6 +340,7 @@ def create_person(
     person_tag: Optional[str] = None,
     quality_control: int = 1,
     need_rotate_check: int = 1,
+    unique_person_control: Optional[int] = None,
     retry_config: Optional[RetryConfig] = None,
     sanitize=None,
 ) -> Dict[str, Any]:
@@ -342,6 +359,9 @@ def create_person(
             params["Image"] = image_base64
         if gender is not None:
             params["Gender"] = gender
+        # 0=不查重 1=查重 2=全局查重 3=全局并拒绝 4=自定义
+        if unique_person_control is not None:
+            params["UniquePersonControl"] = unique_person_control
         # ``PersonTag`` 字段在 SDK 中已废弃，人员备注需通过
         # ``PersonExDescriptionInfos``（外部描述列表）存储。
         if person_tag is not None:
@@ -360,6 +380,8 @@ def create_person(
             "face_id": getattr(resp, "FaceId", ""),
             "face_rect": _face_rect_dict(getattr(resp, "FaceRect", None)),
             "face_model_version": getattr(resp, "FaceModelVersion", ""),
+            # 疑似同一人（已存在相似人员）时返回，供调用方去重
+            "similar_person_id": getattr(resp, "SimilarPersonId", ""),
         }
 
     return _run(
@@ -398,22 +420,27 @@ def create_face(
     image_base64: str,
     quality_control: int = 1,
     need_rotate_check: int = 1,
+    face_match_threshold: Optional[float] = None,
     retry_config: Optional[RetryConfig] = None,
     sanitize=None,
 ) -> Dict[str, Any]:
     """为人员注册人脸。
 
     ``CreateFaceRequest`` 接受 ``Images``（列表），单张图片包装为单元素列表。
+    ``face_match_threshold`` 为同人校验阈值（默认 60），用于避免向同一人员
+    重复注册高度相似的人脸。
     """
 
     def build_request():
         req = models.CreateFaceRequest()
-        params = {
+        params: Dict[str, Any] = {
             "PersonId": person_id,
             "Images": [image_base64],
             "QualityControl": quality_control,
             "NeedRotateDetection": need_rotate_check,
         }
+        if face_match_threshold is not None:
+            params["FaceMatchThreshold"] = face_match_threshold
         req.from_json_string(json.dumps(params))
         return req, params
 
@@ -423,6 +450,7 @@ def create_face(
             "face_ids": list(getattr(resp, "SucFaceIds", []) or []),
             "face_rects": [_face_rect_dict(r) for r in (getattr(resp, "SucFaceRects", []) or [])],
             "suc_face_num": getattr(resp, "SucFaceNum", 0),
+            "suc_indexes": list(getattr(resp, "SucIndexes", []) or []),
             "ret_code": getattr(resp, "RetCode", None),
             "face_model_version": getattr(resp, "FaceModelVersion", ""),
         }
@@ -454,7 +482,8 @@ def delete_face(
         client, "删除人脸", build_request,
         lambda req: client.DeleteFace(req),
         lambda resp: {"person_id": person_id, "face_id": face_id,
-                      "suc_indexes": list(getattr(resp, "SucIndexes", []) or [])},
+                      "suc_face_ids": list(getattr(resp, "SucFaceIds", []) or []),
+                      "suc_deleted_num": getattr(resp, "SucDeletedNum", 0)},
         retry_config=retry_config, sanitize=sanitize,
     )
 
@@ -482,6 +511,7 @@ def get_group_info(
             "group_tag": getattr(resp, "Tag", ""),
             "face_model_version": getattr(resp, "FaceModelVersion", ""),
             "creation_timestamp": getattr(resp, "CreationTimestamp", 0),
+            "group_ex_descriptions": list(getattr(resp, "GroupExDescriptions", []) or []),
         }
 
     return _run(
@@ -516,6 +546,9 @@ def get_person_list(
                 "person_name": getattr(info, "PersonName", ""),
                 "gender": getattr(info, "Gender", 0),
                 "face_ids": list(getattr(info, "FaceIds", []) or []),
+                "person_ex_descriptions": list(
+                    getattr(info, "PersonExDescriptions", []) or []
+                ),
                 "creation_timestamp": getattr(info, "CreationTimestamp", 0),
             })
         return {
@@ -602,6 +635,20 @@ def _face_rect_dict(face_rect) -> Optional[Dict[str, Any]]:
         "y": getattr(face_rect, "Y", 0),
         "width": getattr(face_rect, "Width", 0),
         "height": getattr(face_rect, "Height", 0),
+    }
+
+
+def _completeness_dict(completeness) -> Optional[Dict[str, Any]]:
+    """FaceQualityInfo.Completeness（五官遮挡分）转字典。"""
+    if completeness is None:
+        return None
+    return {
+        "eyebrow": getattr(completeness, "Eyebrow", None),
+        "eye": getattr(completeness, "Eye", None),
+        "nose": getattr(completeness, "Nose", None),
+        "cheek": getattr(completeness, "Cheek", None),
+        "mouth": getattr(completeness, "Mouth", None),
+        "chin": getattr(completeness, "Chin", None),
     }
 
 

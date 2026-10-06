@@ -1,0 +1,214 @@
+{
+  "title": "Tencent Face Recognition",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Tencent Face Recognition",
+        "description": "Enter your Tencent Cloud IAI API credentials",
+        "data": {
+          "secret_id": "Secret ID",
+          "secret_key": "Secret Key",
+          "region": "Region",
+          "person_group_id": "Person group ID",
+          "name": "Name",
+          "scan_interval": "Sensor scan interval (s)"
+        },
+        "data_description": {
+          "secret_id": "Tencent Cloud API Secret ID (starts with AKID)",
+          "secret_key": "Tencent Cloud API Secret Key",
+          "region": "Tencent Cloud service region, e.g. ap-shanghai",
+          "person_group_id": "Person group ID used to store and search faces",
+          "name": "Integration display name",
+          "scan_interval": "Refresh interval for person/status sensors"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate",
+        "description": "Credentials expired. Update your API credentials (current Secret ID: {secret_id_hint})",
+        "data": {
+          "secret_id": "Secret ID",
+          "secret_key": "Secret Key"
+        },
+        "data_description": {
+          "secret_id": "New Secret ID",
+          "secret_key": "New Secret Key"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Authentication failed, check Secret ID and Secret Key",
+      "cannot_connect": "Cannot connect to Tencent Cloud, check network and region",
+      "rate_limited": "API rate limit exceeded, please retry later",
+      "unknown": "An unknown error occurred",
+      "invalid_secret_id": "Invalid Secret ID format, must start with AKID",
+      "invalid_secret_key": "Invalid Secret Key format",
+      "invalid_region": "Invalid region",
+      "invalid_person_group_id": "Person group ID may only contain letters, digits, hyphens and underscores (1-64)"
+    },
+    "abort": {
+      "already_configured": "This Secret ID is already configured",
+      "reauth_successful": "Re-authentication successful"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Tencent Face Recognition options",
+        "menu_options": {
+          "settings": "Settings",
+          "test_connection": "Test connection",
+          "manage": "Manage persons"
+        }
+      },
+      "settings": {
+        "title": "Settings",
+        "description": "Region, default person group and sensor scan interval",
+        "data": {
+          "region": "Region",
+          "person_group_id": "Default person group ID",
+          "scan_interval": "Sensor scan interval (s)"
+        },
+        "data_description": {
+          "region": "Tencent Cloud service region",
+          "person_group_id": "Default group used by services",
+          "scan_interval": "Refresh interval for person/status sensors"
+        }
+      },
+      "test_connection": {
+        "title": "Test connection",
+        "description": "Tencent Cloud API connectivity test\nStatus: {connection_status}\n\nSubmit to return to the menu."
+      },
+      "manage": {
+        "title": "Manage persons",
+        "description": "Person group {group_id} currently has {person_count} person(s)",
+        "data": {
+          "person_action": "Action",
+          "selected_person": "Select person"
+        }
+      },
+      "create_person": {
+        "title": "Create person",
+        "description": "Create a person from a camera snapshot",
+        "data": {
+          "person_id": "Person ID",
+          "person_name": "Person name",
+          "camera_entity": "Camera entity"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Authentication failed, check Secret ID and Secret Key",
+      "cannot_connect": "Cannot connect to Tencent Cloud, check network and region",
+      "rate_limited": "API rate limit exceeded, please retry later",
+      "unknown": "An unknown error occurred",
+      "invalid_person_group_id": "Person group ID may only contain letters, digits, hyphens and underscores (1-64)",
+      "invalid_person_id": "Invalid person ID format",
+      "select_person_required": "Please select a person to delete",
+      "create_failed": "Failed to create person, check the log"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status_sensor": { "name": "Status" },
+      "person_sensor": { "name": "Person" }
+    }
+  },
+  "services": {
+    "face_search": {
+      "name": "Face search",
+      "description": "Search a person group for matching faces and fire a recognition event",
+      "fields": {
+        "group_id": { "name": "Person group ID", "description": "Group to search; defaults to configured group" },
+        "image_url": { "name": "Image URL", "description": "URL of the image" },
+        "image_path": { "name": "Image path", "description": "Local image path" },
+        "image_file": { "name": "Image file", "description": "Base64-encoded image" },
+        "camera_entity_id": { "name": "Camera entity", "description": "Camera to capture the image from" },
+        "config_entry_id": { "name": "Config entry ID", "description": "Specify when multiple entries exist" },
+        "max_face_num": { "name": "Max face num", "description": "Maximum faces to process" },
+        "min_face_size": { "name": "Min face size", "description": "Minimum face size in pixels" },
+        "max_user_num": { "name": "Max person num", "description": "Maximum matched persons to return" },
+        "quality_control": { "name": "Quality control", "description": "Image quality control level 0-4" },
+        "need_rotate_check": { "name": "Rotate check", "description": "Rotate detection (0/1)" },
+        "face_match_threshold": { "name": "Match threshold", "description": "Face match threshold 0-100" }
+      }
+    },
+    "detect_face": {
+      "name": "Detect face",
+      "description": "Detect face positions and sizes in an image",
+      "fields": {
+        "image_url": { "name": "Image URL", "description": "URL of the image" },
+        "image_path": { "name": "Image path", "description": "Local image path" },
+        "image_file": { "name": "Image file", "description": "Base64-encoded image" },
+        "camera_entity_id": { "name": "Camera entity", "description": "Camera to capture the image from" },
+        "config_entry_id": { "name": "Config entry ID", "description": "Specify when multiple entries exist" },
+        "max_face_num": { "name": "Max face num", "description": "Maximum faces to detect" },
+        "min_face_size": { "name": "Min face size", "description": "Minimum face size in pixels" },
+        "need_rotate_check": { "name": "Rotate check", "description": "Rotate detection (0/1)" }
+      }
+    },
+    "get_face_attributes": {
+      "name": "Get face attributes",
+      "description": "Get gender, age, expression and other attributes of faces",
+      "fields": {
+        "image_url": { "name": "Image URL", "description": "URL of the image" },
+        "image_path": { "name": "Image path", "description": "Local image path" },
+        "image_file": { "name": "Image file", "description": "Base64-encoded image" },
+        "camera_entity_id": { "name": "Camera entity", "description": "Camera to capture the image from" },
+        "config_entry_id": { "name": "Config entry ID", "description": "Specify when multiple entries exist" },
+        "max_face_num": { "name": "Max face num", "description": "Maximum faces to analyse" },
+        "need_rotate_check": { "name": "Rotate check", "description": "Rotate detection (0/1)" }
+      }
+    },
+    "create_person": {
+      "name": "Create person",
+      "description": "Create a person in a person group",
+      "fields": {
+        "person_id": { "name": "Person ID", "description": "Unique person ID" },
+        "person_name": { "name": "Person name", "description": "Person name" },
+        "group_id": { "name": "Person group ID", "description": "Target group; defaults to configured group" },
+        "image_url": { "name": "Image URL", "description": "Face image URL" },
+        "image_path": { "name": "Image path", "description": "Local face image path" },
+        "image_file": { "name": "Image file", "description": "Base64-encoded face image" },
+        "camera_entity_id": { "name": "Camera entity", "description": "Camera to capture the face from" },
+        "config_entry_id": { "name": "Config entry ID", "description": "Specify when multiple entries exist" },
+        "gender": { "name": "Gender", "description": "0=female 1=male 2=unknown" },
+        "person_tag": { "name": "Person tag", "description": "Person remark tag" },
+        "quality_control": { "name": "Quality control", "description": "Image quality control level 0-4" },
+        "need_rotate_check": { "name": "Rotate check", "description": "Rotate detection (0/1)" },
+        "unique_person_control": { "name": "Unique person control", "description": "0=none 1=check 2=global check 3=global reject 4=custom" }
+      }
+    },
+    "delete_person": {
+      "name": "Delete person",
+      "description": "Delete a person from a person group",
+      "fields": {
+        "person_id": { "name": "Person ID", "description": "Person ID to delete" },
+        "config_entry_id": { "name": "Config entry ID", "description": "Specify when multiple entries exist" }
+      }
+    },
+    "create_face": {
+      "name": "Create face",
+      "description": "Add a face photo to an existing person",
+      "fields": {
+        "person_id": { "name": "Person ID", "description": "Target person ID" },
+        "image_url": { "name": "Image URL", "description": "Face image URL" },
+        "image_path": { "name": "Image path", "description": "Local face image path" },
+        "image_file": { "name": "Image file", "description": "Base64-encoded face image" },
+        "camera_entity_id": { "name": "Camera entity", "description": "Camera to capture the face from" },
+        "config_entry_id": { "name": "Config entry ID", "description": "Specify when multiple entries exist" },
+        "quality_control": { "name": "Quality control", "description": "Image quality control level 0-4" },
+        "need_rotate_check": { "name": "Rotate check", "description": "Rotate detection (0/1)" },
+        "face_match_threshold": { "name": "Match threshold", "description": "Same-person threshold 0-100" }
+      }
+    },
+    "delete_face": {
+      "name": "Delete face",
+      "description": "Delete a face from a person",
+      "fields": {
+        "person_id": { "name": "Person ID", "description": "Person ID" },
+        "face_id": { "name": "Face ID", "description": "Face ID to delete" },
+        "config_entry_id": { "name": "Config entry ID", "description": "Specify when multiple entries exist" }
+      }
+    }
+  }
+}

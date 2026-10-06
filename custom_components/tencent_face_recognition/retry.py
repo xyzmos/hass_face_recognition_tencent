@@ -14,7 +14,25 @@ from tencentcloud.common.exception.tencent_cloud_sdk_exception import (
     TencentCloudSDKException,
 )
 
-from .errors import handle_api_error, log_and_raise_error, ApiError
+from .errors import (
+    AuthenticationError,
+    InvalidConfigError,
+    NetworkError,
+    QuotaExceededError,
+    RateLimitError,
+    TencentFaceRecognitionError,
+    handle_api_error,
+    log_and_raise_error,
+    ApiError,
+)
+
+# 确定性的业务错误：重试无意义，直接抛出
+_NON_RETRYABLE_APP_ERRORS = (
+    AuthenticationError,
+    InvalidConfigError,
+)
+# 瞬态错误：可重试
+_RETRYABLE_APP_ERRORS = (NetworkError, RateLimitError, QuotaExceededError)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,34 +43,63 @@ MAX_RETRY_DELAY = 30.0
 RETRY_BACKOFF_FACTOR = 2.0
 RETRY_JITTER = 0.1
 
-# 不可重试的错误码（业务错误，重试无意义）
+# 不可重试的错误码（确定性失败，重试无意义）
 NON_RETRYABLE_ERRORS = frozenset({
-    "AuthFailure",
+    # 认证/签名
+    "AuthFailure.SignatureFailure",
+    "AuthFailure.SecretIdNotFound",
+    "AuthFailure.InvalidAuthorization",
+    # 参数错误
     "InvalidParameter",
-    "InvalidParameterValue",
-    "ResourceNotFound",
-    "ResourceNotFoundInUse",
-    "FailedOperation.PersonExist",
-    "FailedOperation.PersonNotExist",
-    "FailedOperation.FaceExist",
-    "FailedOperation.FaceNotExist",
-    "FailedOperation.GroupExist",
-    "FailedOperation.GroupNotExist",
+    "MissingParameter.ErrorParameterEmpty",
+    "UnsupportedOperation.UnknowMethod",
+    # 人员/人员库/人脸确定性错误
+    "InvalidParameterValue.PersonIdNotExist",
+    "InvalidParameterValue.PersonIdAlreadyExist",
+    "InvalidParameterValue.PersonExistInGroup",
+    "InvalidParameterValue.GroupIdNotExist",
+    "InvalidParameterValue.GroupIdAlreadyExist",
+    "InvalidParameterValue.NoFaceInPhoto",
+    "ResourceNotFound.ErrorPersonNotExisted",
+    "FailedOperation.GroupPersonMapNotExist",
+    "FailedOperation.DeleteFaceNumExceed",
+    # 图片/人脸质量
+    "FailedOperation.ImageDecodeFailed",
+    "FailedOperation.ImageSizeExceed",
+    "FailedOperation.ImageResolutionExceed",
+    "FailedOperation.ImageResolutionTooSmall",
+    "FailedOperation.FaceSizeTooSmall",
+    "FailedOperation.FaceQualityNotQualified",
+    # 计费状态（需人工处理，重试无用）
+    "ResourceUnavailable.InArrears",
+    "ResourceUnavailable.Freeze",
+    "ResourceUnavailable.StopUsing",
+    "ResourceUnavailable.LowBalance",
+    "ResourcesSoldOut.ChargeStatusException",
 })
 
 # 速率限制类错误码（可重试）
 RATE_LIMIT_ERRORS = frozenset({
     "RequestLimitExceeded",
-    "RequestQuotaExceeded",
+    "FailedOperation.RequestLimitExceeded",
     "LimitExceeded",
+    "LimitExceeded.ErrorFaceNumExceed",
+    "FailedOperation.SearchFacesExceed",
 })
 
 # 网络/服务端临时错误码（可重试）
 NETWORK_ERRORS = frozenset({
-    "ResourceUnavailable.NetworkError",
-    "ResourceUnavailable.ServiceTimeout",
     "InternalError",
     "FailedOperation.RequestTimeout",
+    "FailedOperation.ServerError",
+    "FailedOperation.ConflictOperation",
+    "FailedOperation.CreateFaceConcurrent",
+    "FailedOperation.ImageFacedetectFailed",
+    "ResourceUnavailable.NetworkError",
+    "ResourceUnavailable.ServiceTimeout",
+    "ResourceUnavailable.UnknownStatus",
+    "ResourceUnavailable.Delivering",
+    "ResourceUnavailable.Recover",
 })
 
 
@@ -87,16 +134,23 @@ def should_retry(exception: TencentCloudSDKException) -> bool:
     """判断 SDK 异常是否可重试。"""
     code = getattr(exception, "code", "") or ""
 
-    # 精确匹配不可重试
+    if not code:
+        return True
+
+    # 精确匹配
     if code in NON_RETRYABLE_ERRORS:
         return False
-
-    # 精确匹配可重试
     if code in RATE_LIMIT_ERRORS or code in NETWORK_ERRORS:
         return True
 
-    # 前缀匹配：AuthFailure.* / InvalidParameter.* / ResourceNotFound.* 不可重试
-    for prefix in ("AuthFailure", "InvalidParameter", "ResourceNotFound"):
+    # 前缀匹配：认证/参数/资源不存在类不可重试
+    for prefix in (
+        "AuthFailure",
+        "InvalidParameter",
+        "MissingParameter",
+        "UnsupportedOperation",
+        "ResourceNotFound",
+    ):
         if code.startswith(prefix):
             return False
 
@@ -145,6 +199,13 @@ def execute_with_retry(
                 _LOGGER.error("遇到不可重试的错误: %s", ex.code)
                 break
         except Exception as ex:  # noqa: BLE001 — 顶层兜底
+            # 确定性的业务错误不重试，直接抛出
+            if isinstance(ex, _NON_RETRYABLE_APP_ERRORS):
+                raise
+            if isinstance(ex, TencentFaceRecognitionError) and not isinstance(
+                ex, _RETRYABLE_APP_ERRORS
+            ):
+                raise
             last_exception = ex
             _LOGGER.warning(
                 "%s 失败 (尝试 %d/%d): %s",
