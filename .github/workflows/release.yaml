@@ -39,7 +39,7 @@ jobs:
           cd custom_components
           # zip 根目录即组件目录，HACS zip_release 解压到 custom_components/
           zip -r "../hass_face_recognition_tencent.zip" hass_face_recognition_tencent \
-            -x "*/__pycache__/*" -x "*.pyc" -x "*/translations/*~*"
+            -x "*/__pycache__/*" -x "*.pyc" -x "*/brand/*"
           cd ..
           ls -lh hass_face_recognition_tencent.zip
           echo "ASSET=hass_face_recognition_tencent.zip" >> "$GITHUB_ENV"

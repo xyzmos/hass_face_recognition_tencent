@@ -18,6 +18,8 @@ jobs:
         uses: hacs/action@main
         with:
           category: integration
+          # topics 为 GitHub 仓库元数据，需在 GitHub 网页为仓库添加 topics 后移除
+          ignore: "topics"
 
   validate-hassfest:
     name: Hassfest (Home Assistant integration validation)
