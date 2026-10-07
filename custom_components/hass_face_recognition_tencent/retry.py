@@ -87,6 +87,23 @@ RATE_LIMIT_ERRORS = frozenset({
     "FailedOperation.SearchFacesExceed",
 })
 
+# 预期内的业务空结果/非故障错误码（降级为 DEBUG/INFO，不打 ERROR/WARNING）
+# —— 门铃/抓拍场景里“无人脸/脸太小/无人/质量不佳”属常态，不该污染日志。
+BENIGN_ERRORS = frozenset({
+    "InvalidParameterValue.NoFaceInPhoto",
+    "FailedOperation.FaceSizeTooSmall",
+    "FailedOperation.FaceQualityNotQualified",
+    "FailedOperation.ImageDecodeFailed",
+    "InvalidParameterValue.PersonIdNotExist",
+    "ResourceNotFound.ErrorPersonNotExisted",
+    "InvalidParameterValue.GroupIdNotExist",
+    "FailedOperation.GroupPersonMapNotExist",
+    "InvalidParameterValue.PersonIdAlreadyExist",
+    "InvalidParameterValue.PersonExistInGroup",
+    "InvalidParameterValue.GroupIdAlreadyExist",
+    "FailedOperation.DeleteFaceNumExceed",
+})
+
 # 网络/服务端临时错误码（可重试）
 NETWORK_ERRORS = frozenset({
     "InternalError",
@@ -191,12 +208,15 @@ def execute_with_retry(
             return api_call()
         except TencentCloudSDKException as ex:
             last_exception = ex
-            _LOGGER.warning(
+            benign = ex.code in BENIGN_ERRORS
+            log = _LOGGER.debug if benign else _LOGGER.warning
+            log(
                 "%s 失败 (尝试 %d/%d): %s",
                 operation_name, attempt + 1, cfg.max_attempts, ex.code,
             )
             if not should_retry(ex):
-                _LOGGER.error("遇到不可重试的错误: %s", ex.code)
+                if not benign:
+                    _LOGGER.error("遇到不可重试的错误: %s", ex.code)
                 break
         except Exception as ex:  # noqa: BLE001 — 顶层兜底
             # 确定性的业务错误不重试，直接抛出

@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Optional
 
 from tencentcloud.iai.v20200303 import models
 
-from .retry import RetryConfig, execute_with_retry
+from .retry import BENIGN_ERRORS, RetryConfig, execute_with_retry
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -76,15 +76,24 @@ def _log_response(operation: str, request_id: str, response: Any, duration: floa
 
 def _log_error(operation: str, request_id: str, error: Exception, duration: float, sanitize=None) -> None:
     sanitize = sanitize or (lambda s: s)
-    _LOGGER.error(
-        "API错误: op=%s id=%s duration=%.3fs error_type=%s msg=%s",
-        operation, request_id, duration, type(error).__name__,
-        sanitize(str(error)),
-    )
-    # SDK 异常的 code 在 TencentCloudSDKException 上
     code = getattr(error, "code", None)
-    if code:
-        _LOGGER.error("腾讯云API错误详情: op=%s id=%s code=%s", operation, request_id, code)
+    # 预期内的业务空结果（如无人脸）不打 ERROR，避免污染日志
+    benign = code in BENIGN_ERRORS
+    if benign:
+        _LOGGER.info(
+            "API业务结果: op=%s id=%s duration=%.3fs code=%s msg=%s",
+            operation, request_id, duration, code, sanitize(str(error)),
+        )
+    else:
+        _LOGGER.error(
+            "API错误: op=%s id=%s duration=%.3fs error_type=%s msg=%s",
+            operation, request_id, duration, type(error).__name__,
+            sanitize(str(error)),
+        )
+        if code:
+            _LOGGER.error(
+                "腾讯云API错误详情: op=%s id=%s code=%s", operation, request_id, code
+            )
     if _LOGGER.isEnabledFor(logging.DEBUG):
         _LOGGER.debug("API错误堆栈: op=%s id=%s", operation, request_id, exc_info=True)
 
