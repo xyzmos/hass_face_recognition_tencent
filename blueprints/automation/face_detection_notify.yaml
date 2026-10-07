@@ -1,0 +1,168 @@
+blueprint:
+  name: 门口人脸识别通知
+  description: >-
+    人体/门铃传感器触发 → 摄像头拍照 → 调用人脸识别 → 命中/未识别/失败分别推送带图通知。
+    命中时列出全部识别到的人员及相似度。
+  domain: automation
+  homeassistant:
+    min_version: 2025.1.0
+  input:
+    trigger_entities:
+      name: 触发传感器
+      description: 人体/门铃传感器（binary_sensor），任一变为 on 即触发
+      selector:
+        entity:
+          domain: binary_sensor
+          multiple: true
+    camera_entity:
+      name: 摄像头
+      description: 抓拍摄像头
+      selector:
+        entity:
+          domain: camera
+    notify_service:
+      name: 通知服务
+      description: 形如 notify.mobile_app_xxx
+      default: notify.notify
+      selector:
+        text:
+    person_group_id:
+      name: 人员库 ID
+      description: 腾讯云人员库
+      default: Hass
+      selector:
+        text:
+    snapshot_dir:
+      name: 快照目录
+      description: 需在 allowlist_external_dirs 内
+      default: /config/www/camera
+      selector:
+        text:
+    base_url:
+      name: 外部访问基础 URL
+      description: 用于通知里的图片地址（https://xxx）
+      default: ""
+      selector:
+        text:
+    match_threshold:
+      name: 识别阈值
+      description: 人脸匹配阈值 0-100
+      default: 60
+      selector:
+        number:
+          min: 0
+          max: 100
+          mode: slider
+    notify_unrecognized:
+      name: 未识别也通知
+      description: 有人脸但未命中人员时是否推送
+      default: true
+      selector:
+        boolean:
+    notify_no_face:
+      name: 无人脸也通知
+      description: 图片中无人脸时是否推送（默认静默）
+      default: false
+      selector:
+        boolean:
+
+variables:
+  suffix: >-
+    {{ 'abcdefghijklmnopqrstuvwxyz0123456789' | list | random }}
+    {{- 'abcdefghijklmnopqrstuvwxyz0123456789' | list | random }}
+    {{- 'abcdefghijklmnopqrstuvwxyz0123456789' | list | random }}
+    {{- 'abcdefghijklmnopqrstuvwxyz0123456789' | list | random }}
+    {{- 'abcdefghijklmnopqrstuvwxyz0123456789' | list | random }}
+    {{- 'abcdefghijklmnopqrstuvwxyz0123456789' | list | random }}
+    {{- 'abcdefghijklmnopqrstuvwxyz0123456789' | list | random }}
+    {{- 'abcdefghijklmnopqrstuvwxyz0123456789' | list | random }}
+  ts: "{{ now().strftime('%Y%m%d-%H%M%S') }}"
+  img_name: "face_{{ ts }}_{{ suffix }}.jpg"
+  img_path: "{{ snapshot_dir | trim }}/{{ img_name }}"
+  img_url: "{{ base_url | trim }}/local/camera/{{ img_name }}"
+
+triggers:
+  - trigger: state
+    entity_id: !input trigger_entities
+    to: "on"
+
+actions:
+  - action: camera.snapshot
+    data:
+      filename: "{{ img_path }}"
+    target:
+      entity_id: !input camera_entity
+
+  - action: hass_face_recognition_tencent.face_search
+    response_variable: fr
+    data:
+      group_id: !input person_group_id
+      face_match_threshold: !input match_threshold
+      min_face_size: 34
+      max_face_num: 10
+      max_user_num: 10
+      image_path: "{{ img_path }}"
+
+  - choose:
+      # 1) 有命中人员
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ fr is defined and fr.success and fr.faces
+                 | selectattr('candidates', 'defined')
+                 | select('list')
+                 | list | length > 0 }}
+        sequence:
+          - variables:
+              hits: >-
+                {{ fr.faces
+                   | selectattr('candidates', 'defined')
+                   | map(attribute='candidates')
+                   | sum(start=[])
+                   | selectattr('person_name')
+                   | list }}
+          - action: !input notify_service
+            data:
+              title: 人员到访通知
+              message: >-
+                🏠 识别到
+                {% for c in hits %}{{ c.person_name }}（{{ c.score }}%）{% if not loop.last %}、{% endif %}{% endfor %}
+                <br>{{ now().strftime('%Y-%m-%d %H:%M:%S') }}
+              data:
+                image: "{{ img_url }}"
+                clickAction: "{{ img_url }}"
+
+      # 2) 成功但无命中（含无人脸）
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ fr is defined and fr.success
+                 and (notify_no_face or not fr.no_face)
+                 and notify_unrecognized }}
+        sequence:
+          - action: !input notify_service
+            data:
+              title: 检测到人脸但未识别身份
+              message: >-
+                {% if fr.no_face %}图片中未检测到人脸{% else %}检测到人脸但未识别身份{% endif %}
+                <br>{{ now().strftime('%Y-%m-%d %H:%M:%S') }}
+              data:
+                image: "{{ img_url }}"
+                clickAction: "{{ img_url }}"
+
+      # 3) 调用失败
+      - conditions:
+          - condition: template
+            value_template: "{{ fr is defined and not fr.success }}"
+        sequence:
+          - action: !input notify_service
+            data:
+              title: 人脸识别失败
+              message: >-
+                错误: {{ fr.error_message | default('未知错误') }}
+                <br>{{ now().strftime('%Y-%m-%d %H:%M:%S') }}
+              data:
+                image: "{{ img_url }}"
+                clickAction: "{{ img_url }}"
+
+mode: single
