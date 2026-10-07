@@ -1,12 +1,12 @@
 {
-  "domain": "tencent_face_recognition",
+  "domain": "hass_face_recognition_tencent",
   "name": "腾讯云人脸识别",
   "codeowners": ["@xyzmos"],
   "config_flow": true,
-  "documentation": "https://code.nextrt.com/Hass/tencent_face_recognition",
+  "documentation": "https://github.com/xyzmos/hass_face_recognition_tencent",
   "integration_type": "service",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://code.nextrt.com/Hass/tencent_face_recognition/issues",
+  "issue_tracker": "https://github.com/xyzmos/hass_face_recognition_tencent/issues",
   "loggers": ["tencentcloud"],
   "requirements": [
     "tencentcloud-sdk-python-common>=3.0.0,<4.0.0",

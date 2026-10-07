@@ -25,7 +25,7 @@ jobs:
           VERSION="${TAG#v}"
           echo "tag=$TAG version=$VERSION"
           # manifest.json 的 version 必须与 tag 一致
-          MVER=$(python3 -c "import json;print(json.load(open('custom_components/tencent_face_recognition/manifest.json'))['version'])")
+          MVER=$(python3 -c "import json;print(json.load(open('custom_components/hass_face_recognition_tencent/manifest.json'))['version'])")
           echo "manifest version=$MVER"
           if [ "$MVER" != "$VERSION" ]; then
             echo "::error::manifest version ($MVER) 与 tag ($VERSION) 不一致"
@@ -38,11 +38,11 @@ jobs:
           set -e
           cd custom_components
           # zip 根目录即组件目录，HACS zip_release 解压到 custom_components/
-          zip -r "../tencent_face_recognition.zip" tencent_face_recognition \
+          zip -r "../hass_face_recognition_tencent.zip" hass_face_recognition_tencent \
             -x "*/__pycache__/*" -x "*.pyc" -x "*/translations/*~*"
           cd ..
-          ls -lh tencent_face_recognition.zip
-          echo "ASSET=tencent_face_recognition.zip" >> "$GITHUB_ENV"
+          ls -lh hass_face_recognition_tencent.zip
+          echo "ASSET=hass_face_recognition_tencent.zip" >> "$GITHUB_ENV"
 
       - name: Generate changelog
         id: changelog
@@ -69,7 +69,7 @@ jobs:
           tag  = os.environ["GITHUB_REF_NAME"]
           ver  = os.environ.get("VERSION", tag.lstrip("v"))
           token= os.environ["GH_TOKEN"]
-          asset= os.environ.get("ASSET", "tencent_face_recognition.zip")
+          asset= os.environ.get("ASSET", "hass_face_recognition_tencent.zip")
           body = open("changelog.md", encoding="utf-8").read()
 
           def req(method, url, data=None, raw=False, extra=None):

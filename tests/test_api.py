@@ -1,7 +1,7 @@
 import json, sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "custom_components"))
-from tencent_face_recognition import api_operations as A
-from tencent_face_recognition.retry import should_retry, RetryConfig
+from hass_face_recognition_tencent import api_operations as A
+from hass_face_recognition_tencent.retry import should_retry, RetryConfig
 from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentCloudSDKException
 
 class FakeClient:

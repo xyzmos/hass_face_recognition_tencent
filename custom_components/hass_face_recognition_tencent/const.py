@@ -1,6 +1,6 @@
 """腾讯云人脸识别插件常量定义"""
 
-DOMAIN = "tencent_face_recognition"
+DOMAIN = "hass_face_recognition_tencent"
 PLATFORMS = ["sensor"]
 MANUFACTURER = "Tencent Cloud"
 

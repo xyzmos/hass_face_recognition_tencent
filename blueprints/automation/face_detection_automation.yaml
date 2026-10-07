@@ -69,14 +69,14 @@ action:
     choose:
       - conditions: "{{ action_type == 'detect' }}"
         sequence:
-          - action: tencent_face_recognition.detect_face
+          - action: hass_face_recognition_tencent.detect_face
             data:
               camera_entity_id: "{{ camera }}"
               max_face_num: "{{ max_faces | int }}"
             response_variable: result
       - conditions: "{{ action_type == 'search' }}"
         sequence:
-          - action: tencent_face_recognition.face_search
+          - action: hass_face_recognition_tencent.face_search
             data:
               camera_entity_id: "{{ camera }}"
               group_id: "{{ group }}"
@@ -91,7 +91,7 @@ action:
       - choose:
           - conditions: "{{ action_type == 'search' and result.faces[0].candidates | length > 0 }}"
             sequence:
-              - event: tencent_face_recognition_face_detected
+              - event: hass_face_recognition_tencent_face_detected
                 event_data:
                   person_id: "{{ result.faces[0].candidates[0].person_id }}"
                   person_name: "{{ result.faces[0].candidates[0].person_name }}"
@@ -106,7 +106,7 @@ action:
                       title: "人脸识别 - 已知人员"
                       message: "检测到 {{ result.faces[0].candidates[0].person_name }}（匹配度 {{ result.faces[0].candidates[0].score }}%）"
         default:
-          - event: tencent_face_recognition_face_detected
+          - event: hass_face_recognition_tencent_face_detected
             event_data:
               face_count: "{{ result.faces | length }}"
               camera_entity_id: "{{ camera }}"

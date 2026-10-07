@@ -1,7 +1,7 @@
 # 腾讯云人脸识别 · Home Assistant 集成
 
-[![Validate](https://code.nextrt.com/Hass/tencent_face_recognition/actions/workflows/validate.yml/badge.svg)](https://code.nextrt.com/Hass/tencent_face_recognition/actions)
-[![Release](https://code.nextrt.com/Hass/tencent_face_recognition/actions/workflows/release.yaml/badge.svg)](https://code.nextrt.com/Hass/tencent_face_recognition/releases)
+[![Validate](https://github.com/xyzmos/hass_face_recognition_tencent/actions/workflows/validate.yml/badge.svg)](https://github.com/xyzmos/hass_face_recognition_tencent/actions)
+[![Release](https://github.com/xyzmos/hass_face_recognition_tencent/actions/workflows/release.yaml/badge.svg)](https://github.com/xyzmos/hass_face_recognition_tencent/releases)
 [![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![hassfest](https://img.shields.io/badge/hassfest-passing-brightgreen)](https://developers.home-assistant.io/)
 
@@ -31,13 +31,13 @@ binary_sensor(门铃/人体感应) → camera 抓拍 → face_search / detect_fa
 > 本仓库遵循 HACS `custom_components/<domain>` 标准布局，发布包含 zip 资产。
 
 1. 打开 **HACS** → 右上角 **⋮** → **Custom repositories**
-2. 仓库地址：`https://code.nextrt.com/Hass/tencent_face_recognition`，类型选 **Integration** → **Add**
+2. 仓库地址：`https://github.com/xyzmos/hass_face_recognition_tencent`，类型选 **Integration** → **Add**
 3. 找到「腾讯云人脸识别」→ **Download**
 4. 重启 Home Assistant
 
 ### 方式二：手动安装
 
-1. 将 `custom_components/tencent_face_recognition` 复制到 `config/custom_components/`
+1. 将 `custom_components/hass_face_recognition_tencent` 复制到 `config/custom_components/`
 2. 重启 Home Assistant
 
 ## 配置
@@ -64,7 +64,7 @@ triggers:
     entity_id: binary_sensor.doorbell   # 门铃/人体感应
     to: "on"
 actions:
-  - action: tencent_face_recognition.face_search
+  - action: hass_face_recognition_tencent.face_search
     response_variable: r
     data:
       camera_entity_id: camera.doorbell
@@ -80,12 +80,12 @@ actions:
 
 ### 识别事件
 
-`face_search` 命中人员时触发事件 **`tencent_face_recognition_face_detected`**（兼容旧 `face_detected`），可直接作为触发器：
+`face_search` 命中人员时触发事件 **`hass_face_recognition_tencent_face_detected`**（兼容旧 `face_detected`），可直接作为触发器：
 
 ```yaml
 triggers:
   - trigger: event
-    event_type: tencent_face_recognition_face_detected
+    event_type: hass_face_recognition_tencent_face_detected
 actions:
   - action: notify.notify
     data:
@@ -133,9 +133,9 @@ actions:
 
 ## 发布新版本（维护者）
 
-1. 改 `custom_components/tencent_face_recognition/manifest.json` 的 `version`
+1. 改 `custom_components/hass_face_recognition_tencent/manifest.json` 的 `version`
 2. `git tag vX.Y.Z && git push origin vX.Y.Z`
-3. `release.yaml` 自动：校验版本一致性 → 打包 zip → 创建 release 并上传 `tencent_face_recognition.zip`（HACS 用）
+3. `release.yaml` 自动：校验版本一致性 → 打包 zip → 创建 release 并上传 `hass_face_recognition_tencent.zip`（HACS 用）
 
 ## 故障排除
 
@@ -146,7 +146,7 @@ actions:
 | 无人脸 | 图片需含清晰人脸，人脸 ≥ 最小尺寸 |
 | 限流 | 已内置退避重试；降低频率或升级套餐 |
 
-开发者工具 → 日志，开启 `custom_components.tencent_face_recognition` 的 debug 可获详细日志。集成页可「下载诊断」（凭据已脱敏）。
+开发者工具 → 日志，开启 `custom_components.hass_face_recognition_tencent` 的 debug 可获详细日志。集成页可「下载诊断」（凭据已脱敏）。
 
 ## 文档参考
 
