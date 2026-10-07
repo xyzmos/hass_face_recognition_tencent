@@ -12,6 +12,8 @@ from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.service import SupportsResponse
 
+from .errors import FaceNotDetectedError
+
 from .const import (
     ATTR_CAMERA_ENTITY_ID,
     ATTR_CONFIG_ENTRY_ID,
@@ -196,6 +198,21 @@ def _fire_detected(hass: HomeAssistant, payload: Dict[str, Any]) -> None:
     hass.bus.async_fire(EVENT_FACE_DETECTED_LEGACY, payload)
 
 
+def _empty_faces_result(op: str, ex: Exception) -> Dict[str, Any]:
+    """「图片中无人脸」属于正常结果而非异常：返回空结果，避免中断自动化。"""
+    _LOGGER.info("%s: 图片中未检测到人脸（%s）", op, ex)
+    return {
+        "success": True,
+        "faces": [],
+        "face_count": 0,
+        "face_model_version": "",
+        "no_face": True,
+        "error_code": "NoFaceInPhoto",
+        "error": None,
+        "error_message": None,
+    }
+
+
 async def _invoke(
     call: ServiceCall, op: str, method: str, **kwargs
 ) -> ServiceResponse:
@@ -203,6 +220,8 @@ async def _invoke(
     try:
         result = await getattr(entry.runtime_data.face_recognition, method)(**kwargs)
         return _check(result, op)
+    except FaceNotDetectedError as ex:
+        return _empty_faces_result(op, ex)
     except (HomeAssistantError, ServiceValidationError):
         raise
     except Exception as ex:
@@ -225,6 +244,8 @@ async def async_face_search_service(call: ServiceCall) -> ServiceResponse:
             need_rotate_check=data[ATTR_NEED_ROTATE_CHECK],
             face_match_threshold=data[ATTR_FACE_MATCH_THRESHOLD],
         )
+    except FaceNotDetectedError as ex:
+        return _empty_faces_result("人脸搜索", ex)
     except (HomeAssistantError, ServiceValidationError):
         raise
     except Exception as ex:

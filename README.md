@@ -98,6 +98,8 @@ actions:
 
 所有服务支持 `response_variable` 取结果，统一返回 `success`/`error*`/`request_id` 等字段。
 
+> 图片中无人脸时，`face_search`/`detect_face`/`get_face_attributes` 返回 `success: true` + 空 `faces`（`no_face: true`），**不会中断自动化**；认证/网络/参数等错误仍会报错。
+
 通用图片参数（取第一个有效）：`camera_entity_id`（摄像头）> `image_url` > `image_path` > `image_file`（Base64）。`group_id` 多数服务可省略（用默认人员库）。
 
 > `image_path` 须位于 `configuration.yaml` 的 `allowlist_external_dirs` 内（如 `/config/www`）。
