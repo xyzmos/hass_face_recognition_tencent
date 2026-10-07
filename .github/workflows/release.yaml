@@ -40,12 +40,14 @@ jobs:
           # 解压到 custom_components/<domain>/ 后即 manifest.json 就位
           cd "custom_components/hass_face_recognition_tencent"
           zip -r "../../hass_face_recognition_tencent.zip" . \
-            -x "__pycache__/*" -x "*.pyc" -x "brand/*"
+            -x "__pycache__/*" -x "*.pyc"
           cd ../..
           ls -lh hass_face_recognition_tencent.zip
-          # 校验 zip 根必须含 manifest.json
+          # 校验 zip 根必须含 manifest.json，且 brand 图标已打入
           unzip -l hass_face_recognition_tencent.zip | grep -q "manifest.json" \
             && echo "OK: manifest.json in zip root" || { echo "::error::zip 根目录缺少 manifest.json"; exit 1; }
+          unzip -l hass_face_recognition_tencent.zip | grep -q "brand/icon.png" \
+            && echo "OK: brand/icon.png included" || echo "::warning::brand/icon.png 未打入 zip"
           echo "ASSET=hass_face_recognition_tencent.zip" >> "$GITHUB_ENV"
 
       - name: Generate changelog
