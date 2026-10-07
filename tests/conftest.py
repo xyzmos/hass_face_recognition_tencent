@@ -30,6 +30,7 @@ core.callback=lambda f: f
 
 helpers = _mod("homeassistant.helpers"); helpers.__path__=[]
 cv = _mod("homeassistant.helpers.config_validation"); cv.string=str; cv.entity_id=lambda v:v; cv.positive_int=int
+cv.config_entry_only_config_schema=lambda d: {}; cv.empty_config_schema=lambda d: {}; cv.config_entry_only_config_schema=lambda d: {}
 svc = _mod("homeassistant.helpers.service")
 class SupportsResponse: NONE="none"; OPTIONAL="optional"; ONLY="only"
 svc.SupportsResponse=SupportsResponse

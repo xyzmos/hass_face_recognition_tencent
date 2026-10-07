@@ -12,6 +12,7 @@ from homeassistant.components.camera import async_get_image
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.helpers import config_validation as cv
 
 from .const import (
     CONF_PERSON_GROUP_ID,
@@ -30,6 +31,9 @@ from .tencent_cloud_client import TencentCloudClient
 _LOGGER = logging.getLogger(__name__)
 
 DATA_WS_REGISTERED = "ws_registered"
+
+# hassfest 要求：实现了 async_setup 的集成需声明 CONFIG_SCHEMA（仅支持 UI 配置项）
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 type TFRConfigEntry = ConfigEntry[TFRRuntimeData]
 

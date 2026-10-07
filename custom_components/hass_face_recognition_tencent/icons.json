@@ -1,17 +1,17 @@
 {
   "entity": {
     "sensor": {
-      "status_sensor": "mdi:face-recognition",
-      "person_sensor": "mdi:account"
+      "status_sensor": { "default": "mdi:face-recognition" },
+      "person_sensor": { "default": "mdi:account" }
     }
   },
   "services": {
-    "face_search": "mdi:account-search",
-    "detect_face": "mdi:face-recognition",
-    "get_face_attributes": "mdi:face-man-profile",
-    "create_person": "mdi:account-plus",
-    "delete_person": "mdi:account-remove",
-    "create_face": "mdi:account-plus-outline",
-    "delete_face": "mdi:account-minus-outline"
+    "face_search": { "service": "mdi:account-search" },
+    "detect_face": { "service": "mdi:face-recognition" },
+    "get_face_attributes": { "service": "mdi:face-man-profile" },
+    "create_person": { "service": "mdi:account-plus" },
+    "delete_person": { "service": "mdi:account-remove" },
+    "create_face": { "service": "mdi:account-plus-outline" },
+    "delete_face": { "service": "mdi:account-minus-outline" }
   }
 }

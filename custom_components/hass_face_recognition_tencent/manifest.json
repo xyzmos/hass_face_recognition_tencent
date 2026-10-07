@@ -10,8 +10,7 @@
   "loggers": ["tencentcloud"],
   "requirements": [
     "tencentcloud-sdk-python-common>=3.0.0,<4.0.0",
-    "tencentcloud-sdk-python-iai>=3.0.0,<4.0.0",
-    "Pillow>=10.0.0"
+    "tencentcloud-sdk-python-iai>=3.0.0,<4.0.0"
   ],
   "version": "2.3.0"
 }
